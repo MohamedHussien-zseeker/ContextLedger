@@ -14,16 +14,11 @@ AI sessions lose context after compaction. Project decisions scatter across chat
 
 AI Memory OS solves this with a simple loop: **capture → process → link → index → search → serve**. Memory lives as Markdown you can edit, indexed in SQLite for fast search, and served through CLI, REST, or MCP for any agent to use.
 
-## Roadmap
+## Current Status
 
-| Version | Milestone | Status |
-|---------|-----------|--------|
-| v0.1 | Core Memory — init, capture, process, index, search, health | **shipped** |
-| v0.2 | Git for Memory — history, diff, rollback, branches | planned |
-| v0.3 | Explainability — why a memory was retrieved, confidence scores | planned |
-| v0.4 | Multi-Agent — shared memory across Claude, Codex, Gemini, Ollama | planned |
-| v0.5 | Memory Tests — declarative assertions, CI/CD integration | planned |
-| v0.6 | Memory Replay — timeline view of project knowledge evolution | planned |
+v0.1.0 is the first working release: vault init, source capture, processing, indexing, BM25 search, graph health, REST API, and MCP server.
+
+Next focus: Git-backed memory history, drift checks, and provenance so agents can explain where retrieved context came from.
 
 ## Quick Demo (5 minutes)
 
