@@ -11,6 +11,7 @@ from memory.processor import process_source, process_all
 from memory.indexer import index_vault
 from memory.search import search
 from memory.graph import health as graph_health
+from memory.doctor import check as doctor_check
 
 
 def cmd_init(args):
@@ -105,37 +106,18 @@ def cmd_health(args):
 
 def cmd_doctor(args):
     vault_path = args.vault or default_vault_path()
-    issues = []
-    if not vault_path.exists():
-        print("ERROR: vault not found")
-        sys.exit(1)
-    if not (vault_path / "_index.md").exists():
-        issues.append("Missing _index.md")
-    if not (vault_path / config.RAW_DIR).exists():
-        issues.append(f"Missing {config.RAW_DIR}/")
-    if not (vault_path / "data/memory.db").exists():
-        issues.append("Missing data/memory.db (run 'memory index')")
-    else:
-        from memory.database import get_db
-        try:
-            db = get_db(vault_path)
-            db.execute("SELECT 1").fetchone()
-            print("  SQLite: OK")
-        except Exception as e:
-            issues.append(f"SQLite error: {e}")
-    if config.QDRANT_HOST:
-        try:
-            import httpx
-            r = httpx.get(f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}/", timeout=2)
-            if r.status_code == 200:
-                print("  Qdrant: OK")
-        except Exception:
-            print("  Qdrant: not available (optional)")
-    print(f"  Python deps: OK")
-    if issues:
-        print(f"\nIssues found ({len(issues)}):")
-        for issue in issues:
+    result = doctor_check(vault_path)
+    for key, val in result["checks"].items():
+        status = "OK" if val else "FAIL"
+        if isinstance(val, bool):
+            print(f"  {key}: {status}")
+        else:
+            print(f"  {key}: {val}")
+    if result["issues"]:
+        print(f"\nIssues found ({len(result['issues'])}):")
+        for issue in result["issues"]:
             print(f"  - {issue}")
+        sys.exit(1)
     else:
         print("\nNo issues found.")
 
