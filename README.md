@@ -28,7 +28,7 @@ AI Memory OS solves this with a simple loop: **capture → process → link → 
 ## Quick Demo (5 minutes)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/MohamedHussien-zseeker/ai-memory-os.git
 cd ai-memory-os
 ./install.sh
 
@@ -133,7 +133,7 @@ pip install -e ".[qdrant]"
 | Human-editable memory | yes | yes | no | varies |
 | Knowledge graph | yes | yes | no | varies |
 | Agent-ready API/MCP | yes | no | partial | yes |
-| Shared by multiple agents | yes | no | partial | partial |
+| Shared by multiple agents | agent-ready (MCP/API) | no | partial | partial |
 | Optional semantic search | yes | no | yes | varies |
 | Local-first | yes | yes | varies | varies |
 
