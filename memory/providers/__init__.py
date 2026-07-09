@@ -1,4 +1,5 @@
 from memory.providers.base import CaptureProvider, RawSource
+from memory.providers.file import FileProvider
 
 _registry: dict[str, CaptureProvider] = {}
 
@@ -14,3 +15,7 @@ def get(scheme: str) -> CaptureProvider | None:
 
 def list_providers() -> list[str]:
     return list(_registry.keys())
+
+
+# Register built-in providers
+register(FileProvider())
