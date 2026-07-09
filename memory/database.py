@@ -58,6 +58,8 @@ END;
 CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
     INSERT INTO memories_fts(memories_fts, rowid, title, content, tags)
     VALUES ('delete', old.rowid, old.title, old.content, old.tags);
+    INSERT INTO memories_fts(rowid, title, content, tags)
+    VALUES (new.rowid, new.title, new.content, new.tags);
 END;
 """
 
