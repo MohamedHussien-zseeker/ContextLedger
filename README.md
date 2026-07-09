@@ -1,8 +1,27 @@
 # AI Memory OS
 
-Local-first, human-editable memory for any AI agent.
+Local-first, human-editable memory infrastructure for AI agents. Think **Git for AI memory**: searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
 
 Turn raw sources into structured, linked, searchable knowledge. Not an agent — the memory layer agents use.
+
+<!-- Demo GIF coming soon -->
+
+## Why This Exists
+
+AI sessions lose context after compaction. Project decisions scatter across chats, notes, and terminals. Agents need a shared memory layer with provenance, search, and human-editable files.
+
+AI Memory OS solves this with a simple loop: **capture → process → link → index → search → serve**. Memory lives as Markdown you can edit, indexed in SQLite for fast search, and served through CLI, REST, or MCP for any agent to use.
+
+## Roadmap
+
+| Version | Milestone | Status |
+|---------|-----------|--------|
+| v0.1 | Core Memory — init, capture, process, index, search, health | **shipped** |
+| v0.2 | Git for Memory — history, diff, rollback, branches | planned |
+| v0.3 | Explainability — why a memory was retrieved, confidence scores | planned |
+| v0.4 | Multi-Agent — shared memory across Claude, Codex, Gemini, Ollama | planned |
+| v0.5 | Memory Tests — declarative assertions, CI/CD integration | planned |
+| v0.6 | Memory Replay — timeline view of project knowledge evolution | planned |
 
 ## Quick Demo (5 minutes)
 

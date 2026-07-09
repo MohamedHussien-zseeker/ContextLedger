@@ -40,7 +40,7 @@
 
 - [ ] Commit all changes
 - [ ] Tag: `git tag v0.1.0`
-- [ ] Push: `git push origin main --tags`
+- [ ] Push: `git push origin master --tags`
 - [ ] Verify tag on GitHub: release page shows v0.1.0
 
 ## Post-Release
