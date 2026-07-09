@@ -13,10 +13,11 @@ def search(
     offset: int = 0,
 ) -> tuple[list, int]:
     db = get_db(vault_path)
+    use_fts = bool(q)
     conditions = ["m.archived=0"]
     params = []
 
-    if q:
+    if use_fts:
         conditions.append("m.rowid IN (SELECT rowid FROM memories_fts WHERE memories_fts MATCH ?)")
         params.append(q)
 
@@ -38,15 +39,30 @@ def search(
     count_row = db.execute(f"SELECT COUNT(*) FROM memories m WHERE {where}", params).fetchone()
     total = count_row[0]
 
-    rows = db.execute(
-        f"""SELECT m.* FROM memories m
-            WHERE {where}
-            ORDER BY m.importance DESC, m.accessed_at IS NULL, m.accessed_at DESC, m.created_at DESC
-            LIMIT ? OFFSET ?""",
-        params + [limit, offset],
-    ).fetchall()
+    if use_fts:
+        rows = db.execute(
+            f"""SELECT m.*, bm25(memories_fts) AS score
+                FROM memories m
+                JOIN memories_fts f ON f.rowid = m.rowid
+                WHERE {where}
+                ORDER BY score ASC
+                LIMIT ? OFFSET ?""",
+            params + [limit, offset],
+        ).fetchall()
+    else:
+        rows = db.execute(
+            f"""SELECT m.* FROM memories m
+                WHERE {where}
+                ORDER BY m.importance DESC, m.accessed_at IS NULL, m.accessed_at DESC, m.created_at DESC
+                LIMIT ? OFFSET ?""",
+            params + [limit, offset],
+        ).fetchall()
 
     memories = [_row_to_memory(r) for r in rows]
+
+    if use_fts:
+        for mem, row in zip(memories, rows):
+            mem.score = row["score"]
 
     if memories:
         now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

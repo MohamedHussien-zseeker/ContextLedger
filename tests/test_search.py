@@ -28,6 +28,18 @@ def test_search_by_query(vault):
     assert any("RAG" in r.title for r in results)
 
 
+def test_search_scores_populated(vault):
+    results, _ = search(vault, q="RAG")
+    assert len(results) >= 1
+    assert all(r.score is not None for r in results)
+
+
+def test_search_no_query_no_score(vault):
+    results, total = search(vault)
+    assert total >= 1
+    assert all(r.score is None for r in results)
+
+
 def test_search_by_tags(vault):
     results, total = search(vault, tags=["rag"])
     assert total >= 1

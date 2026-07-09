@@ -2,14 +2,120 @@
 
 Local-first, human-editable memory for any AI agent.
 
+Turn raw sources into structured, linked, searchable knowledge. Not an agent — the memory layer agents use.
+
+## Quick Demo (5 minutes)
+
 ```bash
+git clone <repo-url>
+cd ai-memory-os
 ./install.sh
+
+# Create a vault
 memory init
-memory capture file example.md
+
+# Capture a source file
+memory capture file my-notes.md
+
+# Process into linked knowledge notes
 memory process
-memory index
-memory search "RAG"
+
+# Index into SQLite
+memory index --apply
+
+# Search with BM25 relevance scores
+memory search "vector embeddings"
+
+# Check graph health
 memory health
+
+# Diagnose issues
+memory doctor
 ```
 
-See `docs/quickstart.md` to get started, `docs/architecture.md` for system design, and `docs/api.md` for the REST API reference.
+## Features
+
+- **Human-editable memory** — Markdown files you can inspect, edit, and version
+- **Knowledge graph** — wikilinks and hub MOCs with SQLite relationship tracking
+- **BM25 full-text search** — SQLite FTS5 with relevance scoring
+- **Provider system** — capture from files, URLs, or custom sources
+- **Graph health metrics** — connectivity, isolated notes, component analysis
+- **REST API** — FastAPI server at `127.0.0.1:9314`
+- **MCP server** — stdio JSON-RPC for AI agent integration
+- **Optional Qdrant** — semantic search via vector embeddings
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `memory init [path]` | Create a new vault |
+| `memory capture <scheme> <target>` | Capture a source via provider |
+| `memory process` | Process raw sources into knowledge notes |
+| `memory index --apply` | Index vault into SQLite |
+| `memory search "query"` | Full-text search with BM25 scores |
+| `memory health` | Graph connectivity report |
+| `memory doctor` | Diagnose vault issues |
+| `memory serve` | Start REST API server |
+| `memory mcp` | Start MCP stdio server |
+
+## Architecture
+
+```
+Knowledge Sources → Processing Pipeline → Human-Editable Memory → SQLite → Search/API/MCP → Agents
+```
+
+Vault structure:
+
+```
+vault/
+├── raw/              # Captured sources
+├── wiki/
+│   ├── generated/    # Auto-generated knowledge notes
+│   └── hubs/         # Topic hub MOCs
+├── data/memory.db    # SQLite database
+└── _index.md         # Vault root
+```
+
+## Requirements
+
+- Python 3.11+
+- SQLite with FTS5 support (included in Python's sqlite3 module)
+
+## Install
+
+```bash
+./install.sh
+```
+
+Or manually:
+
+```bash
+pip install -e .
+```
+
+Optional semantic search:
+
+```bash
+pip install -e ".[qdrant]"
+```
+
+## Documentation
+
+- [Quickstart](docs/quickstart.md) — step-by-step guide
+- [Architecture](docs/architecture.md) — system design and data model
+- [API Reference](docs/api.md) — REST endpoint documentation
+
+## Comparison
+
+| Feature | AI Memory OS | Obsidian | Vector DB | Agent Framework |
+|---------|:---:|:---:|:---:|:---:|
+| Human-editable memory | yes | yes | no | varies |
+| Knowledge graph | yes | yes | no | varies |
+| Agent-ready API/MCP | yes | no | partial | yes |
+| Shared by multiple agents | yes | no | partial | partial |
+| Optional semantic search | yes | no | yes | varies |
+| Local-first | yes | yes | varies | varies |
+
+## License
+
+GPL-3.0
