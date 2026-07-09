@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI Memory OS CLI."""
+"""ContextLedger CLI."""
 import argparse
 import sys
 from pathlib import Path
@@ -142,7 +142,7 @@ def cmd_mcp(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Memory OS")
+    parser = argparse.ArgumentParser(description="ContextLedger")
     parser.add_argument("--vault", "-v", help="Path to vault (default: ~/.memory/vault)")
     sub = parser.add_subparsers(dest="command")
 

@@ -1,4 +1,4 @@
-"""FastAPI REST server for AI Memory OS."""
+"""FastAPI REST server for ContextLedger."""
 import json
 import logging
 import logging.handlers
@@ -89,7 +89,7 @@ async def lifespan(app: FastAPI):
     _log.info("memory_api_stop")
 
 
-app = FastAPI(title="AI Memory OS API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="ContextLedger API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

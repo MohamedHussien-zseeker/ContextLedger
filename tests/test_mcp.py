@@ -25,7 +25,7 @@ def test_initialize(monkeypatch):
         from memory.mcp import server
         importlib.reload(server)
         resp = server.handle_request({"method": "initialize", "id": 1})
-        assert resp["result"]["serverInfo"]["name"] == "ai-memory-os"
+        assert resp["result"]["serverInfo"]["name"] == "contextledger"
         assert resp["result"]["protocolVersion"] == "2024-11-05"
 
 

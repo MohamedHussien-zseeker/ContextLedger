@@ -25,7 +25,7 @@ def handle_request(request: dict) -> dict:
             "id": request_id,
             "result": {
                 "protocolVersion": "2024-11-05",
-                "serverInfo": {"name": "ai-memory-os", "version": "0.1.0"},
+                "serverInfo": {"name": "contextledger", "version": "0.1.0"},
                 "capabilities": {"tools": {}},
             },
         }
