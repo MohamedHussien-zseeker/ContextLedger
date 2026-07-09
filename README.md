@@ -6,6 +6,8 @@ Turn raw sources into structured, linked, searchable knowledge. Not an agent —
 
 <!-- Demo GIF coming soon -->
 
+![AI Memory OS Demo](docs/demo.gif)
+
 ## Why This Exists
 
 AI sessions lose context after compaction. Project decisions scatter across chats, notes, and terminals. Agents need a shared memory layer with provenance, search, and human-editable files.
