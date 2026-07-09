@@ -12,4 +12,4 @@ memory search "RAG"
 memory health
 ```
 
-See `docs/quickstart.md` for details.
+See `docs/quickstart.md` to get started, `docs/architecture.md` for system design, and `docs/api.md` for the REST API reference.
