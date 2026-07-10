@@ -1,5 +1,7 @@
 """Test semantic search graceful fallback (no Qdrant/Ollama)."""
+
 from unittest.mock import patch
+
 from memory import semantic
 
 

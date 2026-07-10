@@ -1,13 +1,22 @@
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from memory.processor import (
-    slugify, title_from_body, choose_hubs, keywords,
-    parse_frontmatter, dump_frontmatter, plain_lines,
-    process_source, process_all, process,
+    choose_hubs,
+    dump_frontmatter,
+    keywords,
+    parse_frontmatter,
+    plain_lines,
+    process,
+    process_all,
+    process_source,
+    slugify,
+    title_from_body,
 )
-from memory.vault import init_vault
 from memory.providers.base import RawSource
+from memory.vault import init_vault
 
 
 def test_slugify():
@@ -92,5 +101,7 @@ def vault_fixture():
         raw_dir = vp / "raw"
         raw_dir.mkdir(exist_ok=True)
         raw_file = raw_dir / "test-source.md"
-        raw_file.write_text("---\ntags: [test]\n---\n# Test Source\n\nThis is a markdown note about RAG architecture and vector search.")
+        raw_file.write_text(
+            "---\ntags: [test]\n---\n# Test Source\n\nThis is a markdown note about RAG architecture and vector search."
+        )
         yield vp, raw_file

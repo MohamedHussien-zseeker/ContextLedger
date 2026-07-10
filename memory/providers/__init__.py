@@ -1,4 +1,5 @@
-from memory.providers.base import CaptureProvider, RawSource
+from memory.providers.base import CaptureProvider
+from memory.providers.base import RawSource as RawSource
 from memory.providers.file import FileProvider
 
 _registry: dict[str, CaptureProvider] = {}

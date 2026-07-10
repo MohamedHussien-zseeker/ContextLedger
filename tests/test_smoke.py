@@ -1,4 +1,5 @@
 """Integration smoke test — full CLI workflow end-to-end via subprocess."""
+
 import subprocess
 import sys
 import tempfile

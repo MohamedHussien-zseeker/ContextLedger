@@ -1,4 +1,5 @@
 """Tests for install.sh — verify preflight checks and venv install."""
+
 from pathlib import Path
 
 INSTALL_SH = Path(__file__).resolve().parents[1] / "install.sh"

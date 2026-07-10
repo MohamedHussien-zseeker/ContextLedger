@@ -85,8 +85,9 @@ ContextLedger provides four ways to access memory:
 | **REST API** | Apps, gateways | HTTP, bound to localhost (`127.0.0.1:9314`) |
 | **MCP server** | AI agents | stdio JSON-RPC |
 | **Markdown vault** | Obsidian, manual editing | Files on disk |
+| **Context bridge** | Mobile AI apps | Clipboard copy/paste via `cl-context` |
 
-Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer.
+Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer. Mobile AI apps can use the context bridge to paste retrieved memory into Gemini, ChatGPT, Claude, or any other chat app.
 
 ## Features
 
@@ -97,6 +98,7 @@ Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer.
 - **Graph health metrics** — connectivity, isolated notes, component analysis
 - **REST API** — FastAPI server bound to localhost by default (`127.0.0.1:9314`)
 - **MCP server** — stdio JSON-RPC for AI agent integration
+- **Context bridge** — clipboard integration for mobile AI apps (`cl-context`)
 - **Optional Qdrant** — semantic search via vector embeddings
 
 ## CLI Commands
@@ -112,6 +114,7 @@ Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer.
 | `memory doctor` | Diagnose vault issues |
 | `memory serve` | Start REST API server |
 | `memory mcp` | Start MCP stdio server |
+| `cl-context "query"` | Search and copy context to clipboard for AI apps |
 
 ## Architecture
 

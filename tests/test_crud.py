@@ -1,9 +1,11 @@
-import pytest
 import tempfile
 from pathlib import Path
-from memory.database import init_db, _local
+
+import pytest
+
+from memory.crud import archive, create, get, get_stats, update, upsert_by_vault_path
+from memory.database import _local, init_db
 from memory.models import MemoryCreate, MemoryUpdate
-from memory.crud import create, get, update, archive, upsert_by_vault_path, get_stats
 
 
 @pytest.fixture

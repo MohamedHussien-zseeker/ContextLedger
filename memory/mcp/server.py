@@ -1,15 +1,14 @@
 """MCP server exposing memory tools to agents."""
+
 import json
 import sys
-from pathlib import Path
 
-from memory import config
-from memory.vault import default_vault_path
+from memory.crud import create, get_stats
 from memory.database import init_db
-from memory.crud import create, get, get_stats
-from memory.models import MemoryCreate
-from memory.search import search, related
 from memory.graph import health as graph_health
+from memory.models import MemoryCreate
+from memory.search import search
+from memory.vault import default_vault_path
 
 VAULT_PATH = default_vault_path()
 
@@ -67,9 +66,7 @@ def handle_request(request: dict) -> dict:
                         "description": "Process raw sources into knowledge notes",
                         "inputSchema": {
                             "type": "object",
-                            "properties": {
-                                "limit": {"type": "integer", "default": 0}
-                            },
+                            "properties": {"limit": {"type": "integer", "default": 0}},
                         },
                     },
                     {
@@ -77,9 +74,7 @@ def handle_request(request: dict) -> dict:
                         "description": "Index vault into SQLite",
                         "inputSchema": {
                             "type": "object",
-                            "properties": {
-                                "apply": {"type": "boolean", "default": False}
-                            },
+                            "properties": {"apply": {"type": "boolean", "default": False}},
                         },
                     },
                     {
@@ -147,9 +142,7 @@ def handle_request(request: dict) -> dict:
                     "content": [
                         {
                             "type": "text",
-                            "text": json.dumps(
-                                {"id": mem.id, "title": mem.title}
-                            ),
+                            "text": json.dumps({"id": mem.id, "title": mem.title}),
                         }
                     ]
                 },
@@ -193,9 +186,7 @@ def handle_request(request: dict) -> dict:
                             "text": json.dumps(
                                 {
                                     "files": stats["files"],
-                                    "total_memories": stats.get(
-                                        "total_memories", 0
-                                    ),
+                                    "total_memories": stats.get("total_memories", 0),
                                 }
                             ),
                         }
@@ -207,22 +198,14 @@ def handle_request(request: dict) -> dict:
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": {
-                    "content": [
-                        {"type": "text", "text": json.dumps(stats)}
-                    ]
-                },
+                "result": {"content": [{"type": "text", "text": json.dumps(stats)}]},
             }
         elif tool == "memory_health":
             h = graph_health(VAULT_PATH)
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": {
-                    "content": [
-                        {"type": "text", "text": json.dumps(h)}
-                    ]
-                },
+                "result": {"content": [{"type": "text", "text": json.dumps(h)}]},
             }
         elif tool == "doctor":
             from memory.doctor import check
@@ -231,11 +214,7 @@ def handle_request(request: dict) -> dict:
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
-                "result": {
-                    "content": [
-                        {"type": "text", "text": json.dumps(result)}
-                    ]
-                },
+                "result": {"content": [{"type": "text", "text": json.dumps(result)}]},
             }
         return {
             "jsonrpc": "2.0",

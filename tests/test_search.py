@@ -1,10 +1,12 @@
-import pytest
 import tempfile
 from pathlib import Path
-from memory.database import init_db, _local
+
+import pytest
+
 from memory.crud import create
+from memory.database import _local, init_db
 from memory.models import MemoryCreate
-from memory.search import search, related
+from memory.search import related, search
 
 
 @pytest.fixture
@@ -13,9 +15,22 @@ def vault():
     with tempfile.TemporaryDirectory() as tmp:
         vp = Path(tmp)
         init_db(vp)
-        create(vp, MemoryCreate(title="RAG Guide", content="RAG architecture with vector search", tags=["rag"]))
-        create(vp, MemoryCreate(title="Agent Patterns", content="How to build AI agents", tags=["agents"]))
-        create(vp, MemoryCreate(title="Python Tips", content="Python 3.11 tips and tricks", tags=["python"]))
+        create(
+            vp,
+            MemoryCreate(
+                title="RAG Guide", content="RAG architecture with vector search", tags=["rag"]
+            ),
+        )
+        create(
+            vp,
+            MemoryCreate(title="Agent Patterns", content="How to build AI agents", tags=["agents"]),
+        )
+        create(
+            vp,
+            MemoryCreate(
+                title="Python Tips", content="Python 3.11 tips and tricks", tags=["python"]
+            ),
+        )
         yield vp
     if _local.conn is not None:
         _local.conn.close()

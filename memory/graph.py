@@ -1,4 +1,5 @@
 """Graph connectivity analysis for the vault."""
+
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -22,7 +23,11 @@ def _targets(text: str) -> list[str]:
 
 
 def _resolve(target: str, rels: set[str], by_stem: dict[str, list[str]]) -> str | None:
-    candidates = [target] if target.endswith(".md") else [f"{target}.md", *by_stem.get(Path(target).stem, [])]
+    candidates = (
+        [target]
+        if target.endswith(".md")
+        else [f"{target}.md", *by_stem.get(Path(target).stem, [])]
+    )
     for candidate in candidates:
         if candidate in rels:
             return candidate
@@ -77,7 +82,9 @@ def health(vault_path: Path) -> dict:
         "isolated_pct": round(len(isolated) / total * 100, 1) if total else 0,
         "components": len(components),
         "largest_component": len(components[0]) if components else 0,
-        "largest_component_pct": round(len(components[0]) / total * 100, 1) if components and total else 0,
+        "largest_component_pct": round(len(components[0]) / total * 100, 1)
+        if components and total
+        else 0,
         "generated_isolated": len(generated_isolated),
         "generated_isolated_files": generated_isolated[:20],
     }

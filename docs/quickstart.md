@@ -121,6 +121,25 @@ memory --help
 memory init ~/my-vault
 ```
 
+#### Context bridge for AI apps
+
+Use ContextLedger with any mobile AI app (Gemini, ChatGPT, Claude, etc.) via clipboard:
+
+```bash
+# Start the API server
+mkdir -p ~/.memory
+openssl rand -hex 32 > ~/.memory/token
+MEMORY_VAULT=~/my-vault memory serve --host 127.0.0.1 --port 9314 &
+
+# Search and copy context to clipboard
+cl-context "what did we decide about v0.1.3?"
+
+# Paste into your AI app:
+# "Use this project context, then answer my question: ..."
+```
+
+For auto-copy, install Termux:API: `pkg install termux-api`
+
 #### Important notes for Termux
 
 - Do **not** use `/tmp/my-vault` — Termux may have a read-only `/tmp`. Use `~/my-vault` or `$PREFIX/tmp/my-vault` instead.

@@ -1,12 +1,13 @@
 """Index the Obsidian vault into SQLite."""
+
 import os
 import re
 from collections import defaultdict
 from pathlib import Path
 
-from memory.database import init_db, get_db
+from memory.crud import replace_relationships, upsert_by_vault_path
+from memory.database import get_db, init_db
 from memory.models import MemoryCreate
-from memory.crud import upsert_by_vault_path, replace_relationships
 
 SKIP_DIRS = {".obsidian", ".git", "__pycache__", ".trash"}
 SKIP_FILES = {"_dashboard.md", "_index.md", "_today.md"}
@@ -38,6 +39,7 @@ def parse_frontmatter(content: str) -> tuple[dict | None, str]:
         if len(parts) >= 3:
             try:
                 import yaml
+
                 fm = yaml.safe_load(parts[1])
                 if isinstance(fm, dict):
                     return fm, parts[2].strip()
@@ -98,17 +100,28 @@ def index_file(vault_path: Path, rel_path: str, apply: bool) -> dict:
     tags = extract_tags(fm)
     mtype = path_to_type(rel_path)
     m = MemoryCreate(
-        type=mtype, title=title, content=content,
-        source="obsidian", importance=2 if mtype == "log" else 3,
-        tags=tags, vault_path=rel_path,
+        type=mtype,
+        title=title,
+        content=content,
+        source="obsidian",
+        importance=2 if mtype == "log" else 3,
+        tags=tags,
+        vault_path=rel_path,
     )
     if apply:
         result = upsert_by_vault_path(vault_path, rel_path, m)
         is_new = result.created_at == result.updated_at
-        return {"action": "new" if is_new else "updated", "id": result.id, "title": title, "type": mtype}
-    existing = get_db(vault_path).execute(
-        "SELECT id FROM memories WHERE vault_path=? AND archived=0", (rel_path,)
-    ).fetchone()
+        return {
+            "action": "new" if is_new else "updated",
+            "id": result.id,
+            "title": title,
+            "type": mtype,
+        }
+    existing = (
+        get_db(vault_path)
+        .execute("SELECT id FROM memories WHERE vault_path=? AND archived=0", (rel_path,))
+        .fetchone()
+    )
     return {"action": "dry-run", "existing": existing is not None, "title": title, "type": mtype}
 
 
@@ -156,8 +169,14 @@ def rebuild_relationships(vault_path: Path, rel_paths: list[str]) -> int:
     return total
 
 
-def _resolve_target(target: str, by_path: dict[str, str], by_stem: dict[str, list[str]]) -> str | None:
-    candidates = [target] if target.endswith(".md") else [f"{target}.md", *by_stem.get(Path(target).stem, [])]
+def _resolve_target(
+    target: str, by_path: dict[str, str], by_stem: dict[str, list[str]]
+) -> str | None:
+    candidates = (
+        [target]
+        if target.endswith(".md")
+        else [f"{target}.md", *by_stem.get(Path(target).stem, [])]
+    )
     for candidate in candidates:
         if candidate in by_path:
             return candidate
@@ -194,5 +213,7 @@ def index_vault(vault_path: Path, apply: bool = False) -> dict:
         stats["archived"] = archive_missing_vault_paths(vault_path, files)
         stats["relationships"] = rebuild_relationships(vault_path, files)
         db = get_db(vault_path)
-        stats["total_memories"] = db.execute("SELECT COUNT(*) FROM memories WHERE archived=0").fetchone()[0]
+        stats["total_memories"] = db.execute(
+            "SELECT COUNT(*) FROM memories WHERE archived=0"
+        ).fetchone()[0]
     return stats

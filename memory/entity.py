@@ -1,4 +1,5 @@
 """Simple entity extraction."""
+
 import re
 
 

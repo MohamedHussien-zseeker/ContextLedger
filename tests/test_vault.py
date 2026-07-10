@@ -1,6 +1,8 @@
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from memory.vault import init_vault
 
 

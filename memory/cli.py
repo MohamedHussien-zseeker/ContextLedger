@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """ContextLedger CLI."""
+
 import argparse
 import sys
 from pathlib import Path
 
 from memory import config
-from memory.vault import init_vault, default_vault_path
-from memory.providers import get as get_provider, list_providers
-from memory.processor import process_source, process_all
-from memory.indexer import index_vault
-from memory.search import search
-from memory.graph import health as graph_health
 from memory.doctor import check as doctor_check
+from memory.graph import health as graph_health
+from memory.indexer import index_vault
+from memory.processor import process_all, process_source
+from memory.providers import get as get_provider
+from memory.providers import list_providers
+from memory.search import search
+from memory.vault import default_vault_path, init_vault
 
 
 def cmd_init(args):
@@ -65,7 +67,9 @@ def cmd_process(args):
         if r["action"] == "skip":
             print(f"  skip  {r['source']}")
         else:
-            print(f"  {r['action']:<6} {r['source']} -> {r.get('note', '')} [{', '.join(r.get('hubs', []))}]")
+            print(
+                f"  {r['action']:<6} {r['source']} -> {r.get('note', '')} [{', '.join(r.get('hubs', []))}]"
+            )
     print(f"Processed: {len(results)}")
 
 
@@ -79,7 +83,7 @@ def cmd_index(args):
         print(f"Relationships rebuilt: {stats.get('relationships', 0)}")
         print(f"Archived stale paths: {stats.get('archived', 0)}")
     else:
-        new = sum(1 for r in stats['results'] if not r['existing'])
+        new = sum(1 for r in stats["results"] if not r["existing"])
         print(f"Not in DB: {new}/{stats['files']}")
 
 
@@ -100,7 +104,7 @@ def cmd_health(args):
     print(f"Components: {result['components']}")
     print(f"Largest component: {result['largest_component']} ({result['largest_component_pct']}%)")
     print(f"Generated isolated: {result['generated_isolated']}")
-    for f in result['generated_isolated_files'][:5]:
+    for f in result["generated_isolated_files"][:5]:
         print(f"  {f}")
 
 
@@ -125,7 +129,9 @@ def cmd_doctor(args):
 def cmd_serve(args):
     try:
         import uvicorn
+
         from memory.api.server import app
+
         uvicorn.run(app, host=args.host, port=args.port, log_level="info")
     except ImportError as e:
         print(f"ERROR: {e}")
@@ -135,6 +141,7 @@ def cmd_serve(args):
 def cmd_mcp(args):
     try:
         from memory.mcp.server import main as mcp_main
+
         mcp_main()
     except ImportError as e:
         print(f"ERROR: {e}")
@@ -152,11 +159,15 @@ def main():
     p_capture = sub.add_parser("capture", help="Capture a source")
     p_capture.add_argument("scheme", help="Provider scheme (file, youtube, etc.)")
     p_capture.add_argument("target", help="Source URI or path")
-    p_capture.add_argument("--process", action="store_true", help="Process immediately after capture")
+    p_capture.add_argument(
+        "--process", action="store_true", help="Process immediately after capture"
+    )
     p_capture.add_argument("--dry-run", action="store_true")
 
     p_process = sub.add_parser("process", help="Process raw sources into knowledge notes")
-    p_process.add_argument("--force", action="store_true", help="Regenerate already processed sources")
+    p_process.add_argument(
+        "--force", action="store_true", help="Regenerate already processed sources"
+    )
     p_process.add_argument("--dry-run", action="store_true")
     p_process.add_argument("--limit", type=int, default=0)
 
@@ -168,15 +179,15 @@ def main():
     p_search.add_argument("query", help="Search query")
     p_search.add_argument("--limit", type=int, default=10)
 
-    p_health = sub.add_parser("health", help="Graph health report")
+    _p_health = sub.add_parser("health", help="Graph health report")
 
-    p_doctor = sub.add_parser("doctor", help="Diagnose vault issues")
+    _p_doctor = sub.add_parser("doctor", help="Diagnose vault issues")
 
     p_serve = sub.add_parser("serve", help="Start REST API server")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=9314)
 
-    p_mcp = sub.add_parser("mcp", help="Start MCP server")
+    _p_mcp = sub.add_parser("mcp", help="Start MCP server")
 
     args = parser.parse_args()
     if not args.command:
