@@ -27,6 +27,7 @@ def test_install_script_checks_version():
 def test_install_script_checks_venv():
     content = INSTALL_SH.read_text()
     assert "python3 -m venv" in content
+    assert "mktemp" in content
 
 
 def test_install_script_creates_venv_dir():

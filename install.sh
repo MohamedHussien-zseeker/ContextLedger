@@ -19,8 +19,10 @@ then
   exit 1
 fi
 
-if ! python3 -m venv --help >/dev/null 2>&1; then
-  echo "ERROR: python3-venv is not installed."
+TMP_VENV=$(mktemp -d)
+if ! python3 -m venv "$TMP_VENV" >/dev/null 2>&1; then
+  rm -rf "$TMP_VENV"
+  echo "ERROR: python3-venv is not installed or incomplete."
   echo
   echo "On Ubuntu/Debian, run:"
   echo "  sudo apt update"
@@ -30,6 +32,7 @@ if ! python3 -m venv --help >/dev/null 2>&1; then
   echo "  ./install.sh"
   exit 1
 fi
+rm -rf "$TMP_VENV"
 
 echo "Creating virtual environment at $VENV_DIR ..."
 python3 -m venv "$VENV_DIR"
