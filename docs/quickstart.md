@@ -69,3 +69,27 @@ memory index --apply
 memory search "RAG"
 memory health
 ```
+
+## Troubleshooting
+
+### Missing pip
+
+If `./install.sh` prints `ERROR: python3-pip is not installed`, install pip first:
+
+```bash
+sudo apt update
+sudo apt install -y python3-pip
+```
+
+Then rerun `./install.sh`.
+
+### Python version too old
+
+ContextLedger requires Python 3.11+. If you have an older version:
+
+```bash
+sudo apt update
+sudo apt install -y python3.11 python3.11-venv
+```
+
+Then rerun `./install.sh`.
