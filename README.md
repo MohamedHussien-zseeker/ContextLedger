@@ -2,12 +2,7 @@
 
 **Git for AI memory.**
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-83%2F83%20passing-brightgreen.svg)](#testing)
-[![Release](https://img.shields.io/badge/release-v0.1.0-orange.svg)](https://github.com/MohamedHussien-zseeker/ContextLedger/releases)
-[![MCP](https://img.shields.io/badge/MCP-ready-9b59b6.svg)](#integration-surface)
-[![API](https://img.shields.io/badge/API-FastAPI-009688.svg)](#integration-surface)
+GPL-3.0 licensed. Python 3.11+. 83 tests passing. CLI, REST API, and MCP server included.
 
 Local-first, human-editable memory infrastructure for AI agents. Searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
 
@@ -58,7 +53,7 @@ Not an agent — the memory layer agents use.
 | Capability | Status |
 |------------|--------|
 | Vault init | working |
-| Source capture (file, URL) | working |
+| Source capture (file) | working |
 | Processing pipeline | working |
 | Knowledge graph (wikilinks, MOCs) | working |
 | SQLite + FTS5 indexing | working |
@@ -77,7 +72,7 @@ ContextLedger provides four ways to access memory:
 | Interface | For | Protocol |
 |-----------|-----|----------|
 | **CLI** | Humans, scripts | `memory` command |
-| **REST API** | Apps, gateways | HTTP at `127.0.0.1:9314` |
+| **REST API** | Apps, gateways | HTTP, bound to localhost (`127.0.0.1:9314`) |
 | **MCP server** | AI agents | stdio JSON-RPC |
 | **Markdown vault** | Obsidian, manual editing | Files on disk |
 
@@ -88,9 +83,9 @@ Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer.
 - **Human-editable memory** — Markdown files you can inspect, edit, and version
 - **Knowledge graph** — wikilinks and hub MOCs with SQLite relationship tracking
 - **BM25 full-text search** — SQLite FTS5 with relevance scoring
-- **Provider system** — capture from files, URLs, or custom sources
+- **Provider system** — extensible capture (file provider, custom sources)
 - **Graph health metrics** — connectivity, isolated notes, component analysis
-- **REST API** — FastAPI server at `127.0.0.1:9314`
+- **REST API** — FastAPI server bound to localhost by default (`127.0.0.1:9314`)
 - **MCP server** — stdio JSON-RPC for AI agent integration
 - **Optional Qdrant** — semantic search via vector embeddings
 
