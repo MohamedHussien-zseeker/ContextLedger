@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Demo recording script for AI Memory OS
-# Run: asciinema rec docs/demo.cast -c bash docs/demo-script.sh
-# Then: agg docs/demo.cast docs/demo.gif --theme monokai --speed 1.5
+# Fallback for asciinema. Primary source: docs/demo.tape (build with docs/build-demo.sh)
 set -euo pipefail
 
 DEMO_VAULT="/tmp/ai-memory-os-demo"
@@ -24,7 +22,7 @@ EOF
 
 echo ""
 echo "  ╔══════════════════════════════════════════════════╗"
-echo "  ║         AI Memory OS — 60 Second Demo           ║"
+echo "  ║        ContextLedger — 60 Second Demo           ║"
 echo "  ╚══════════════════════════════════════════════════╝"
 echo ""
 sleep 1
