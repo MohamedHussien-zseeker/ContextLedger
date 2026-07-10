@@ -104,6 +104,45 @@ sudo apt install -y python3.11 python3.11-venv
 
 Then rerun `./install.sh`.
 
+### Termux (Android)
+
+ContextLedger supports installation on Termux. The installer will detect Termux automatically and guide you through any missing prerequisites.
+
+#### Quick install
+
+```bash
+pkg update
+pkg install git python rust clang make pkg-config openssl libffi
+git clone https://github.com/MohamedHussien-zseeker/ContextLedger.git
+cd ContextLedger
+./install.sh
+export PATH="$HOME/.local/bin:$PATH"
+memory --help
+memory init ~/my-vault
+```
+
+#### Important notes for Termux
+
+- Do **not** use `/tmp/my-vault` — Termux may have a read-only `/tmp`. Use `~/my-vault` or `$PREFIX/tmp/my-vault` instead.
+- The first install may take several minutes while Rust compiles `pydantic-core`. This is normal.
+- If you see errors about `ANDROID_API_LEVEL`, set it manually:
+  ```bash
+  export ANDROID_API_LEVEL=$(getprop ro.build.version.sdk)
+  ```
+- If `memory` is not found after install, add it to your PATH:
+  ```bash
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+  source ~/.bashrc
+  ```
+
+#### Slow compilation
+
+`pydantic-core` requires Rust compilation on Termux, which can take 5-10 minutes depending on your device. If compilation fails:
+
+1. Ensure you have enough free storage (`df -h`)
+2. Try increasing swap if available
+3. Verify build tools: `rustc --version && clang --version`
+
 ### Upgrading
 
 Pull the latest changes and rerun the installer:
