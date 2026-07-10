@@ -1,9 +1,10 @@
 """Integration smoke test — full CLI workflow end-to-end via subprocess."""
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
-PYTHON = Path(__file__).resolve().parents[1] / ".venv" / "bin" / "python"
+PYTHON = sys.executable
 
 
 def _cli(*args: str, vault: Path | None = None) -> subprocess.CompletedProcess:
