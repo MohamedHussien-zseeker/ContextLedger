@@ -1,4 +1,5 @@
 """Diagnose vault health."""
+
 from pathlib import Path
 
 from memory import config
@@ -20,6 +21,7 @@ def check(vault_path: Path) -> dict:
         issues.append("Missing data/memory.db — run 'memory index'")
     else:
         from memory.database import get_db
+
         try:
             db = get_db(vault_path)
             db.execute("SELECT 1").fetchone()
@@ -31,6 +33,7 @@ def check(vault_path: Path) -> dict:
     if config.QDRANT_HOST:
         try:
             import httpx
+
             r = httpx.get(f"http://{config.QDRANT_HOST}:{config.QDRANT_PORT}/", timeout=2)
             checks["qdrant"] = r.status_code == 200
         except Exception:

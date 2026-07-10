@@ -1,6 +1,7 @@
 """SQLite FTS5 search."""
-from memory.database import get_db
+
 from memory.crud import _row_to_memory
+from memory.database import get_db
 
 
 def search(
@@ -65,7 +66,11 @@ def search(
             mem.score = row["score"]
 
     if memories:
-        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        now = (
+            __import__("datetime")
+            .datetime.now(__import__("datetime").timezone.utc)
+            .strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
         ids = [m.id for m in memories]
         placeholders = ",".join("?" for _ in ids)
         db.execute(

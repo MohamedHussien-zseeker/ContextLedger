@@ -1,28 +1,30 @@
 """FastAPI REST server for ContextLedger."""
+
 import json
 import logging
 import logging.handlers
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Depends, Header, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from memory import config
-from memory.vault import default_vault_path
+from memory.crud import archive, create, get, get_stats, update
 from memory.database import init_db
-from memory.crud import create, get, update, archive, get_stats
-from memory.search import search, related
-from memory.models import MemoryCreate, MemoryUpdate, MemoryResponse, StatsResponse
 from memory.entity import extract_entities
-from memory.providers import get as get_provider, list_providers
-from memory.processor import process_source, process_all
 from memory.indexer import index_vault
+from memory.models import MemoryCreate, MemoryResponse, MemoryUpdate, StatsResponse
+from memory.processor import process_all, process_source
+from memory.providers import get as get_provider
+from memory.providers import list_providers
+from memory.search import related, search
+from memory.vault import default_vault_path
 
 VAULT_PATH = Path(os.environ.get("MEMORY_VAULT", default_vault_path()))
 _request_count = 0
@@ -43,19 +45,21 @@ def get_logger():
 
     class JSONFormatter(logging.Formatter):
         def format(self, record):
-            return json.dumps({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "service": "memory-api",
-                "level": record.levelname,
-                "message": record.getMessage(),
-                "request_id": getattr(record, "request_id", ""),
-                "duration_ms": getattr(record, "duration_ms", 0),
-            })
+            return json.dumps(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "service": "memory-api",
+                    "level": record.levelname,
+                    "message": record.getMessage(),
+                    "request_id": getattr(record, "request_id", ""),
+                    "duration_ms": getattr(record, "duration_ms", 0),
+                }
+            )
 
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
         handler = logging.handlers.RotatingFileHandler(
-            log_dir / "memory-api.jsonl", maxBytes=100*1024*1024, backupCount=3
+            log_dir / "memory-api.jsonl", maxBytes=100 * 1024 * 1024, backupCount=3
         )
     except PermissionError:
         handler = logging.StreamHandler()
@@ -121,7 +125,11 @@ async def logging_middleware(request: Request, call_next):
 @app.get("/v1/health")
 def health():
     s = get_stats(VAULT_PATH)
-    return {"status": "ok", "memory_count": s["total_memories"], "db_size_bytes": s["db_size_bytes"]}
+    return {
+        "status": "ok",
+        "memory_count": s["total_memories"],
+        "db_size_bytes": s["db_size_bytes"],
+    }
 
 
 @app.post("/v1/remember", response_model=MemoryResponse)
@@ -164,9 +172,13 @@ class SearchQuery(BaseModel):
 @app.post("/v1/search")
 def search_endpoint(body: SearchQuery, _=Depends(verify_token)):
     memories, total = search(
-        VAULT_PATH, q=body.q, tags=body.tags or None,
-        type_filter=body.type or None, source=body.source or None,
-        limit=body.limit, offset=body.offset,
+        VAULT_PATH,
+        q=body.q,
+        tags=body.tags or None,
+        type_filter=body.type or None,
+        source=body.source or None,
+        limit=body.limit,
+        offset=body.offset,
     )
     return {"memories": [m.model_dump() for m in memories], "total": total}
 

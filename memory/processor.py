@@ -1,4 +1,5 @@
 """Process raw sources into linked wiki knowledge notes."""
+
 import os
 import re
 from collections import Counter
@@ -9,19 +10,94 @@ from memory import config
 from memory.providers.base import RawSource
 
 STOPWORDS = {
-    "about", "after", "again", "against", "also", "because", "before", "being", "between", "could",
-    "every", "from", "have", "into", "more", "most", "notes", "only", "other", "over", "same",
-    "should", "source", "their", "there", "these", "this", "through", "using", "what", "when", "where",
-    "which", "while", "with", "would", "your", "that", "they", "them", "then", "than", "were",
+    "about",
+    "after",
+    "again",
+    "against",
+    "also",
+    "because",
+    "before",
+    "being",
+    "between",
+    "could",
+    "every",
+    "from",
+    "have",
+    "into",
+    "more",
+    "most",
+    "notes",
+    "only",
+    "other",
+    "over",
+    "same",
+    "should",
+    "source",
+    "their",
+    "there",
+    "these",
+    "this",
+    "through",
+    "using",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "with",
+    "would",
+    "your",
+    "that",
+    "they",
+    "them",
+    "then",
+    "than",
+    "were",
 }
 HUBS = {
-    "AI Engineering": ["agent", "agents", "automation", "workflow", "harness", "opencode", "codex", "ai engineering"],
+    "AI Engineering": [
+        "agent",
+        "agents",
+        "automation",
+        "workflow",
+        "harness",
+        "opencode",
+        "codex",
+        "ai engineering",
+    ],
     "LLMs": ["llm", "llms", "model", "models", "claude", "openai", "ollama", "token", "prompt"],
-    "RAG": ["rag", "retrieval", "embedding", "embeddings", "vector", "qdrant", "semantic", "search"],
-    "Memory Systems": ["memory", "obsidian", "sqlite", "vault", "wiki", "knowledge", "graph", "brain"],
+    "RAG": [
+        "rag",
+        "retrieval",
+        "embedding",
+        "embeddings",
+        "vector",
+        "qdrant",
+        "semantic",
+        "search",
+    ],
+    "Memory Systems": [
+        "memory",
+        "obsidian",
+        "sqlite",
+        "vault",
+        "wiki",
+        "knowledge",
+        "graph",
+        "brain",
+    ],
     "Prompt Engineering": ["prompt", "prompts", "system prompt", "instruction", "context"],
     "Python": ["python", "fastapi", "sqlite", "script", "pytest"],
-    "Business": ["business", "sales", "offer", "customer", "marketing", "pricing", "portfolio", "commercial"],
+    "Business": [
+        "business",
+        "sales",
+        "offer",
+        "customer",
+        "marketing",
+        "pricing",
+        "portfolio",
+        "commercial",
+    ],
     "Cybersecurity": ["security", "cyber", "cybersecurity", "breach", "threat", "auth", "token"],
 }
 
@@ -41,6 +117,7 @@ def parse_frontmatter(text: str) -> tuple[dict, str]:
         parts = text.split("---", 2)
         if len(parts) >= 3:
             import yaml
+
             try:
                 data = yaml.safe_load(parts[1]) or {}
                 if isinstance(data, dict):
@@ -167,18 +244,25 @@ def ensure_hub(vault_path: Path, hub: str, dry_run: bool) -> str:
     path = vault_path / rel
     if path.exists():
         return rel
-    content = dump_frontmatter({
-        "created": now(),
-        "status": "active",
-        "tags": ["hub", "moc", slug],
-    }) + f"# {hub}\n\n## Generated Knowledge\n\n"
+    content = (
+        dump_frontmatter(
+            {
+                "created": now(),
+                "status": "active",
+                "tags": ["hub", "moc", slug],
+            }
+        )
+        + f"# {hub}\n\n## Generated Knowledge\n\n"
+    )
     if not dry_run:
         (vault_path / config.HUB_DIR).mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     return rel
 
 
-def upsert_hub_link(vault_path: Path, hub_rel: str, note_rel: str, note_title: str, dry_run: bool) -> None:
+def upsert_hub_link(
+    vault_path: Path, hub_rel: str, note_rel: str, note_title: str, dry_run: bool
+) -> None:
     if dry_run:
         return
     path = vault_path / hub_rel
@@ -192,7 +276,9 @@ def upsert_hub_link(vault_path: Path, hub_rel: str, note_rel: str, note_title: s
     path.write_text(text, encoding="utf-8")
 
 
-def process_source(vault_path: Path, source_path: Path, force: bool = False, dry_run: bool = False) -> dict:
+def process_source(
+    vault_path: Path, source_path: Path, force: bool = False, dry_run: bool = False
+) -> dict:
     rel_source = source_path.relative_to(vault_path).as_posix()
     text = source_path.read_text(encoding="utf-8", errors="replace")
     fm, body = parse_frontmatter(text)
@@ -222,8 +308,13 @@ def process_source(vault_path: Path, source_path: Path, force: bool = False, dry
         "tags": sorted({"generated", "llm-wiki", *[slugify(h) for h in hubs], *key_terms[:5]}),
     }
     hub_links = ", ".join(f"[[{rel}|{hub}]]" for rel, hub in zip(hub_rels, hubs))
-    related_links = "\n".join(f"- [[{rel}|{related_title}]]" for rel, related_title in rels) or "- [[04-Knowledge/_index.md|Knowledge Index]]"
-    project_line = f"- [[{project[0]}|{project[1]}]]" if project else "- [[01-Projects/_index.md|Projects]]"
+    related_links = (
+        "\n".join(f"- [[{rel}|{related_title}]]" for rel, related_title in rels)
+        or "- [[04-Knowledge/_index.md|Knowledge Index]]"
+    )
+    project_line = (
+        f"- [[{project[0]}|{project[1]}]]" if project else "- [[01-Projects/_index.md|Projects]]"
+    )
     body_text = dump_frontmatter(generated_fm)
     body_text += f"# {title}\n\n"
     body_text += f"Source: [[{rel_source}|{source_path.stem}]]\n\n"
@@ -247,10 +338,17 @@ def process_source(vault_path: Path, source_path: Path, force: bool = False, dry
         fm["hubs"] = hubs
         source_path.write_text(dump_frontmatter(fm) + body.lstrip(), encoding="utf-8")
 
-    return {"action": "update" if existed_before else "write", "source": rel_source, "note": generated_rel, "hubs": hubs}
+    return {
+        "action": "update" if existed_before else "write",
+        "source": rel_source,
+        "note": generated_rel,
+        "hubs": hubs,
+    }
 
 
-def process_all(vault_path: Path, force: bool = False, dry_run: bool = False, limit: int = 0) -> list[dict]:
+def process_all(
+    vault_path: Path, force: bool = False, dry_run: bool = False, limit: int = 0
+) -> list[dict]:
     raw_dir = vault_path / config.RAW_DIR
     results = []
     if not raw_dir.exists():
@@ -263,7 +361,9 @@ def process_all(vault_path: Path, force: bool = False, dry_run: bool = False, li
     return results
 
 
-def process(vault_path: Path, source: RawSource | Path | str, force: bool = False, dry_run: bool = False) -> dict:
+def process(
+    vault_path: Path, source: RawSource | Path | str, force: bool = False, dry_run: bool = False
+) -> dict:
     if isinstance(source, RawSource):
         source_slug = slugify(source.title)
         raw_rel = f"{config.RAW_DIR}/{source_slug}.md"

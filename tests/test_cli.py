@@ -1,14 +1,17 @@
 """Tests for the CLI dispatch."""
+
 import argparse
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
+from memory.cli import cmd_doctor, cmd_health, cmd_index, cmd_init, cmd_process, cmd_search
 from memory.database import _local
 from memory.vault import init_vault
-from memory.cli import cmd_init, cmd_health, cmd_doctor, cmd_search, cmd_index, cmd_process
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────
+
 
 def _vault():
     _local.conn = None
@@ -32,6 +35,7 @@ def reset_db():
 
 
 # ── init ─────────────────────────────────────────────────────────────────
+
 
 def test_cmd_init_creates_vault():
     with tempfile.TemporaryDirectory() as tmp:
@@ -62,6 +66,7 @@ def test_cmd_init_existing_raises():
 
 # ── health ───────────────────────────────────────────────────────────────
 
+
 def test_cmd_health(capsys):
     vp, tmp = _vault()
     args = _ns(vault=vp)
@@ -74,6 +79,7 @@ def test_cmd_health(capsys):
 
 
 # ── doctor ───────────────────────────────────────────────────────────────
+
 
 def test_cmd_doctor_no_vault(capsys):
     args = _ns(vault=Path("/nonexistent/vault/path"))
@@ -92,6 +98,7 @@ def test_cmd_doctor_ok(capsys):
 
 # ── index (dry-run) ──────────────────────────────────────────────────────
 
+
 def test_cmd_index_dry_run(capsys):
     vp, tmp = _vault()
     (vp / "04-Knowledge/test.md").write_text("---\ntags: [test]\n---\n# Test Note\nHello.")
@@ -105,9 +112,12 @@ def test_cmd_index_dry_run(capsys):
 
 # ── process (dry-run) ────────────────────────────────────────────────────
 
+
 def test_cmd_process_dry_run(capsys):
     vp, tmp = _vault()
-    (vp / "raw" / "test-source.md").write_text("# Test Source\nContent about RAG and memory systems.")
+    (vp / "raw" / "test-source.md").write_text(
+        "# Test Source\nContent about RAG and memory systems."
+    )
     args = _ns(vault=vp, force=False, dry_run=True, limit=0)
     cmd_process(args)
     captured = capsys.readouterr().out
@@ -116,6 +126,7 @@ def test_cmd_process_dry_run(capsys):
 
 
 # ── search ───────────────────────────────────────────────────────────────
+
 
 def test_cmd_search_empty(capsys):
     vp, tmp = _vault()

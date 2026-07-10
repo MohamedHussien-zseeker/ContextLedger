@@ -1,7 +1,7 @@
 """Tests for the REST API server."""
+
 import os
 import tempfile
-import shutil
 import uuid
 from pathlib import Path
 
@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 TEST_VAULT = Path(tempfile.mkdtemp())
 os.environ["MEMORY_VAULT"] = str(TEST_VAULT)
 
-from memory.api.server import app
-from memory.database import init_db, get_db
+from memory.api.server import app  # noqa: E402
+from memory.database import get_db, init_db  # noqa: E402
 
 init_db(TEST_VAULT)
 
@@ -59,14 +59,17 @@ def test_health(client):
 
 
 def test_create_memory(client):
-    resp = client.post("/v1/remember", json={
-        "title": "Test Memory",
-        "content": "This is a test content",
-        "type": "note",
-        "tags": ["test", "api"],
-        "importance": 3,
-        "source": "api-test",
-    })
+    resp = client.post(
+        "/v1/remember",
+        json={
+            "title": "Test Memory",
+            "content": "This is a test content",
+            "type": "note",
+            "tags": ["test", "api"],
+            "importance": 3,
+            "source": "api-test",
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["title"] == "Test Memory"
@@ -95,17 +98,23 @@ def test_get_memory_not_found(client):
 
 
 def test_update_memory(client):
-    create_resp = client.post("/v1/remember", json={
-        "title": "Original Title",
-        "content": "Original content",
-    })
+    create_resp = client.post(
+        "/v1/remember",
+        json={
+            "title": "Original Title",
+            "content": "Original content",
+        },
+    )
     mem_id = create_resp.json()["id"]
 
-    resp = client.put(f"/v1/memories/{mem_id}", json={
-        "title": "Updated Title",
-        "content": "Updated content",
-        "importance": 5,
-    })
+    resp = client.put(
+        f"/v1/memories/{mem_id}",
+        json={
+            "title": "Updated Title",
+            "content": "Updated content",
+            "importance": 5,
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["title"] == "Updated Title"
@@ -137,7 +146,9 @@ def test_delete_memory_not_found(client):
 
 
 def test_search_by_query(client):
-    client.post("/v1/remember", json={"title": "Python Programming", "content": "Learning Python basics"})
+    client.post(
+        "/v1/remember", json={"title": "Python Programming", "content": "Learning Python basics"}
+    )
     client.post("/v1/remember", json={"title": "Java Programming", "content": "Java is also nice"})
 
     resp = client.post("/v1/search", json={"q": "Python"})
@@ -170,7 +181,9 @@ def test_search_pagination(client):
 
 def test_stats(client):
     client.post("/v1/remember", json={"title": "Stats Note", "type": "note", "source": "test"})
-    client.post("/v1/remember", json={"title": "Stats Project", "type": "project", "source": "test"})
+    client.post(
+        "/v1/remember", json={"title": "Stats Project", "type": "project", "source": "test"}
+    )
 
     resp = client.get("/v1/stats")
     assert resp.status_code == 200
@@ -182,20 +195,26 @@ def test_stats(client):
 
 
 def test_capture_invalid_provider(client):
-    resp = client.post("/v1/capture", json={
-        "scheme": "nosuchprovider",
-        "target": "anything",
-    })
+    resp = client.post(
+        "/v1/capture",
+        json={
+            "scheme": "nosuchprovider",
+            "target": "anything",
+        },
+    )
     assert resp.status_code == 400
 
 
 def test_capture_file(client):
     src_file = TEST_VAULT / "test_capture_source.txt"
     src_file.write_text("Hello from capture test")
-    resp = client.post("/v1/capture", json={
-        "scheme": "file",
-        "target": str(src_file),
-    })
+    resp = client.post(
+        "/v1/capture",
+        json={
+            "scheme": "file",
+            "target": str(src_file),
+        },
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["title"] == "Test Capture Source"
@@ -214,7 +233,9 @@ def test_process_no_sources(client):
 
 def test_index(client):
     note = TEST_VAULT / "test-note.md"
-    note.write_text("---\ntitle: Test Index Note\ntags: [test]\n---\n\n# Test Index Note\n\nSome content.")
+    note.write_text(
+        "---\ntitle: Test Index Note\ntags: [test]\n---\n\n# Test Index Note\n\nSome content."
+    )
     resp = client.post("/v1/index", json={"apply": True})
     assert resp.status_code == 200
     data = resp.json()
@@ -224,10 +245,13 @@ def test_index(client):
 
 
 def test_entities(client):
-    create_resp = client.post("/v1/remember", json={
-        "title": "Entity Test about AI and Python",
-        "content": "Check https://example.com for more info",
-    })
+    create_resp = client.post(
+        "/v1/remember",
+        json={
+            "title": "Entity Test about AI and Python",
+            "content": "Check https://example.com for more info",
+        },
+    )
     mem_id = create_resp.json()["id"]
 
     resp = client.get(f"/v1/entities/{mem_id}")

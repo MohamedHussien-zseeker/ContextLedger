@@ -1,10 +1,15 @@
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from memory.database import _local
 from memory.indexer import (
-    path_to_type, extract_title, extract_tags,
-    iter_markdown_files, index_vault,
+    extract_tags,
+    extract_title,
+    index_vault,
+    iter_markdown_files,
+    path_to_type,
 )
 from memory.vault import init_vault
 
@@ -47,7 +52,9 @@ def test_index_vault_dry_run():
     with tempfile.TemporaryDirectory() as tmp:
         vp = Path(tmp) / "test-vault"
         init_vault(vp)
-        (vp / "04-Knowledge/test.md").write_text("---\ntags: [test]\n---\n# Test Note\nContent here.")
+        (vp / "04-Knowledge/test.md").write_text(
+            "---\ntags: [test]\n---\n# Test Note\nContent here."
+        )
         stats = index_vault(vp, apply=False)
         assert stats["files"] >= 1
         for r in stats["results"]:

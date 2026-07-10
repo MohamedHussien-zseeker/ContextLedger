@@ -1,5 +1,5 @@
+from memory.providers import get, list_providers, register
 from memory.providers.base import CaptureProvider, RawSource
-from memory.providers import register, get, list_providers
 
 
 class DummyProvider(CaptureProvider):

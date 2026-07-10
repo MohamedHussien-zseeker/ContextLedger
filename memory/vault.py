@@ -1,4 +1,5 @@
 """Vault initialization and management."""
+
 from datetime import datetime
 from pathlib import Path
 

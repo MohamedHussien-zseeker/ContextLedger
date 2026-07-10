@@ -1,9 +1,11 @@
 import json
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from memory.database import _local
-from memory.mcp.server import handle_request, VAULT_PATH
+from memory.mcp.server import handle_request
 
 
 @pytest.fixture(autouse=True)
@@ -17,12 +19,12 @@ def clean_db():
 
 def test_initialize(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp:
-        monkeypatch.setattr(
-            "memory.mcp.server.VAULT_PATH", Path(tmp)
-        )
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
         # Reimport to pick up monkeypatched VAULT_PATH
         import importlib
+
         from memory.mcp import server
+
         importlib.reload(server)
         resp = server.handle_request({"method": "initialize", "id": 1})
         assert resp["result"]["serverInfo"]["name"] == "contextledger"
@@ -49,20 +51,18 @@ def test_unknown_method():
 
 
 def test_unknown_tool():
-    resp = handle_request(
-        {"method": "tools/call", "params": {"name": "nonexistent"}, "id": 4}
-    )
+    resp = handle_request({"method": "tools/call", "params": {"name": "nonexistent"}, "id": 4})
     assert "error" in resp
     assert resp["error"]["code"] == -32601
 
 
 def test_capture_and_search(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp:
-        monkeypatch.setattr(
-            "memory.mcp.server.VAULT_PATH", Path(tmp)
-        )
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
         import importlib
+
         from memory.mcp import server
+
         importlib.reload(server)
 
         # Initialize DB first
@@ -106,11 +106,11 @@ def test_capture_and_search(monkeypatch):
 
 def test_get_stats(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp:
-        monkeypatch.setattr(
-            "memory.mcp.server.VAULT_PATH", Path(tmp)
-        )
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
         import importlib
+
         from memory.mcp import server
+
         importlib.reload(server)
 
         server.handle_request({"method": "initialize", "id": 1})
@@ -129,11 +129,11 @@ def test_get_stats(monkeypatch):
 
 def test_doctor(monkeypatch):
     with tempfile.TemporaryDirectory() as tmp:
-        monkeypatch.setattr(
-            "memory.mcp.server.VAULT_PATH", Path(tmp)
-        )
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
         import importlib
+
         from memory.mcp import server
+
         importlib.reload(server)
 
         server.handle_request({"method": "initialize", "id": 1})

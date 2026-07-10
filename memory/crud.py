@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from memory.database import get_db
-from memory.models import MemoryCreate, MemoryUpdate, MemoryResponse
+from memory.models import MemoryCreate, MemoryResponse, MemoryUpdate
 
 
 def _row_to_memory(row) -> MemoryResponse:
@@ -33,7 +33,18 @@ def create(vault_path: Path, m: MemoryCreate) -> MemoryResponse:
     db.execute(
         """INSERT INTO memories (id, type, title, content, source, importance, tags, created_at, updated_at, vault_path)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (mid, m.type, m.title, m.content, m.source, m.importance, json.dumps(m.tags), now, now, m.vault_path),
+        (
+            mid,
+            m.type,
+            m.title,
+            m.content,
+            m.source,
+            m.importance,
+            json.dumps(m.tags),
+            now,
+            now,
+            m.vault_path,
+        ),
     )
     db.commit()
     row = db.execute("SELECT * FROM memories WHERE id=?", (mid,)).fetchone()
@@ -45,8 +56,10 @@ def get(vault_path: Path, mid: str) -> Optional[MemoryResponse]:
     row = db.execute("SELECT * FROM memories WHERE id=? AND archived=0", (mid,)).fetchone()
     if not row:
         return None
-    db.execute("UPDATE memories SET access_count=access_count+1, accessed_at=? WHERE id=?",
-               (datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), mid))
+    db.execute(
+        "UPDATE memories SET access_count=access_count+1, accessed_at=? WHERE id=?",
+        (datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), mid),
+    )
     db.commit()
     return _row_to_memory(row)
 
@@ -85,7 +98,9 @@ def archive(vault_path: Path, mid: str) -> bool:
 
 def find_by_vault_path(vault_path_root: Path, vault_path: str) -> Optional[MemoryResponse]:
     db = get_db(vault_path_root)
-    row = db.execute("SELECT * FROM memories WHERE vault_path=? AND archived=0", (vault_path,)).fetchone()
+    row = db.execute(
+        "SELECT * FROM memories WHERE vault_path=? AND archived=0", (vault_path,)
+    ).fetchone()
     if row:
         return _row_to_memory(row)
     return None
@@ -95,15 +110,22 @@ def upsert_by_vault_path(vault_path_root: Path, vault_path: str, m: MemoryCreate
     existing = find_by_vault_path(vault_path_root, vault_path)
     if existing:
         um = MemoryUpdate(
-            type=m.type, title=m.title, content=m.content, source=m.source,
-            importance=m.importance, tags=m.tags, vault_path=vault_path,
+            type=m.type,
+            title=m.title,
+            content=m.content,
+            source=m.source,
+            importance=m.importance,
+            tags=m.tags,
+            vault_path=vault_path,
         )
         return update(vault_path_root, existing.id, um)
     c = m.model_copy(update={"vault_path": vault_path})
     return create(vault_path_root, c)
 
 
-def replace_relationships(vault_path_root: Path, source_id: str, relationships: list[tuple[str, str]]) -> int:
+def replace_relationships(
+    vault_path_root: Path, source_id: str, relationships: list[tuple[str, str]]
+) -> int:
     db = get_db(vault_path_root)
     db.execute(
         "DELETE FROM memory_relationships WHERE source_id=? AND relationship_type IN (?, ?)",
@@ -125,10 +147,18 @@ def replace_relationships(vault_path_root: Path, source_id: str, relationships: 
 def get_stats(vault_path_root: Path) -> dict:
     db = get_db(vault_path_root)
     total = db.execute("SELECT COUNT(*) FROM memories WHERE archived=0").fetchone()[0]
-    by_type = dict(db.execute("SELECT type, COUNT(*) FROM memories WHERE archived=0 GROUP BY type").fetchall())
-    by_source = dict(db.execute("SELECT source, COUNT(*) FROM memories WHERE archived=0 GROUP BY source").fetchall())
+    by_type = dict(
+        db.execute("SELECT type, COUNT(*) FROM memories WHERE archived=0 GROUP BY type").fetchall()
+    )
+    by_source = dict(
+        db.execute(
+            "SELECT source, COUNT(*) FROM memories WHERE archived=0 GROUP BY source"
+        ).fetchall()
+    )
     rels = db.execute("SELECT COUNT(*) FROM memory_relationships").fetchone()[0]
-    db_size = db.execute("SELECT page_count * page_size FROM pragma_page_count, pragma_page_size").fetchone()[0]
+    db_size = db.execute(
+        "SELECT page_count * page_size FROM pragma_page_count, pragma_page_size"
+    ).fetchone()[0]
     return {
         "total_memories": total,
         "by_type": by_type,
