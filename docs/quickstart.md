@@ -6,6 +6,7 @@
 git clone https://github.com/MohamedHussien-zseeker/ContextLedger.git
 cd ContextLedger
 ./install.sh
+memory --help
 ```
 
 ## Initialize a vault
@@ -72,16 +73,25 @@ memory health
 
 ## Troubleshooting
 
-### Missing pip
+### Missing python3-venv
 
-If `./install.sh` prints `ERROR: python3-pip is not installed`, install pip first:
+If `./install.sh` prints `ERROR: python3-venv is not installed`:
 
 ```bash
 sudo apt update
-sudo apt install -y python3-pip
+sudo apt install -y python3-venv
 ```
 
 Then rerun `./install.sh`.
+
+### ~/.local/bin not on PATH
+
+If `memory: command not found` after install, add `~/.local/bin` to your PATH:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
 
 ### Python version too old
 
@@ -93,3 +103,13 @@ sudo apt install -y python3.11 python3.11-venv
 ```
 
 Then rerun `./install.sh`.
+
+### Upgrading
+
+Pull the latest changes and rerun the installer:
+
+```bash
+cd ContextLedger
+git pull
+./install.sh
+```
