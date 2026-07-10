@@ -2,7 +2,7 @@
 
 **Git for AI memory.**
 
-GPL-3.0 licensed. Python 3.11+. 89 tests passing. CLI, REST API, and MCP server included.
+GPL-3.0 licensed. Python 3.11+. 93 tests passing. CLI, REST API, and MCP server included.
 
 [![Tests](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/tests.yml/badge.svg)](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/tests.yml)
 [![CodeQL](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/codeql.yml/badge.svg)](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/codeql.yml)
