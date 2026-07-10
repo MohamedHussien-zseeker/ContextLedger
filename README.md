@@ -24,16 +24,22 @@ cd ContextLedger
 ./install.sh
 ```
 
+**Termux (Android):** Install build prerequisites first, then see [docs/quickstart.md](docs/quickstart.md#termux-android) for full instructions:
+
+```bash
+pkg install git python rust clang make pkg-config openssl libffi
+```
+
 ## 30-Second Demo
 
 ```bash
-memory init /tmp/my-vault
-memory --vault /tmp/my-vault capture file my-notes.md
-memory --vault /tmp/my-vault process
-memory --vault /tmp/my-vault index --apply
-memory --vault /tmp/my-vault search "your query"
-memory --vault /tmp/my-vault health
-memory --vault /tmp/my-vault doctor
+memory init ~/my-vault
+memory --vault ~/my-vault capture file my-notes.md
+memory --vault ~/my-vault process
+memory --vault ~/my-vault index --apply
+memory --vault ~/my-vault search "your query"
+memory --vault ~/my-vault health
+memory --vault ~/my-vault doctor
 ```
 
 ## Why ContextLedger
@@ -52,7 +58,7 @@ Not an agent — the memory layer agents use.
 
 ## Current Release
 
-**v0.1.0** — first working release.
+**v0.1.2** — first working release.
 
 | Capability | Status |
 |------------|--------|
@@ -65,7 +71,7 @@ Not an agent — the memory layer agents use.
 | Graph health metrics | working |
 | REST API (FastAPI) | working |
 | MCP server (stdio) | working |
-| 83 tests passing | verified |
+| 93 tests passing | verified |
 
 **Next:** v0.2 adds Git-backed memory history and drift checks.
 
@@ -129,7 +135,7 @@ vault/
 
 | Version | Focus | Status |
 |---------|-------|--------|
-| **v0.1.0** | Core loop: capture, process, index, search, serve | released |
+| **v0.1.2** | Core loop: capture, process, index, search, serve | released |
 | **v0.2** | Git-backed memory history and drift checks | planned |
 | **v0.3** | Retrieval explainability and provenance | planned |
 
@@ -152,7 +158,7 @@ Every release includes tests, demo updates, and docs updates.
 pytest -q
 ```
 
-83 tests covering CLI, API, MCP, search, graph, processor, and integration.
+93 tests covering CLI, API, MCP, search, graph, processor, and integration.
 
 ## Documentation
 
