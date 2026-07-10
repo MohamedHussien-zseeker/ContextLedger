@@ -1,53 +1,87 @@
-# AI Memory OS
+# ContextLedger
 
-Local-first, human-editable memory infrastructure for AI agents. Think **Git for AI memory**: searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
+**Git for AI memory.**
 
-Turn raw sources into structured, linked, searchable knowledge. Not an agent — the memory layer agents use.
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-83%2F83%20passing-brightgreen.svg)](#testing)
+[![Release](https://img.shields.io/badge/release-v0.1.0-orange.svg)](https://github.com/MohamedHussien-zseeker/ContextLedger/releases)
+[![MCP](https://img.shields.io/badge/MCP-ready-9b59b6.svg)](#integration-surface)
+[![API](https://img.shields.io/badge/API-FastAPI-009688.svg)](#integration-surface)
 
-<!-- Demo GIF coming soon -->
+Local-first, human-editable memory infrastructure for AI agents. Searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
 
-![AI Memory OS Demo](docs/demo.gif)
+> ContextLedger is an implementation of the [AI Memory OS](docs/architecture.md) architecture.
 
-## Why This Exists
+![ContextLedger Demo](docs/demo.gif)
 
-AI sessions lose context after compaction. Project decisions scatter across chats, notes, and terminals. Agents need a shared memory layer with provenance, search, and human-editable files.
+*What you just saw: init a vault, capture a source, process into linked knowledge, index into SQLite, search with BM25 scores, check graph health, diagnose issues — 7 commands, 30 seconds, zero cloud.*
 
-AI Memory OS solves this with a simple loop: **capture → process → link → index → search → serve**. Memory lives as Markdown you can edit, indexed in SQLite for fast search, and served through CLI, REST, or MCP for any agent to use.
-
-## Current Status
-
-v0.1.0 is the first working release: vault init, source capture, processing, indexing, BM25 search, graph health, REST API, and MCP server.
-
-Next focus: Git-backed memory history, drift checks, and provenance so agents can explain where retrieved context came from.
-
-## Quick Demo (5 minutes)
+## Quick Install
 
 ```bash
-git clone https://github.com/MohamedHussien-zseeker/ai-memory-os.git
-cd ai-memory-os
+git clone https://github.com/MohamedHussien-zseeker/ContextLedger.git
+cd ContextLedger
 ./install.sh
-
-# Create a vault
-memory init
-
-# Capture a source file
-memory capture file my-notes.md
-
-# Process into linked knowledge notes
-memory process
-
-# Index into SQLite
-memory index --apply
-
-# Search with BM25 relevance scores
-memory search "vector embeddings"
-
-# Check graph health
-memory health
-
-# Diagnose issues
-memory doctor
 ```
+
+## 30-Second Demo
+
+```bash
+memory init /tmp/my-vault
+memory --vault /tmp/my-vault capture file my-notes.md
+memory --vault /tmp/my-vault process
+memory --vault /tmp/my-vault index --apply
+memory --vault /tmp/my-vault search "your query"
+memory --vault /tmp/my-vault health
+memory --vault /tmp/my-vault doctor
+```
+
+## Why ContextLedger
+
+AI sessions lose context after compaction. Project decisions scatter across chats, notes, and terminals. Agents retrieve context without explaining where it came from.
+
+**The problem:**
+- Sessions forget project state after compaction
+- Docs drift from what's actually deployed
+- Agents can't explain why they retrieved specific context
+- Memory is locked in proprietary formats or cloud services
+
+**ContextLedger solves this** with a simple loop: **capture → process → link → index → search → serve**. Memory lives as Markdown you can edit, indexed in SQLite for fast search, and served through CLI, REST, or MCP for any agent to use.
+
+Not an agent — the memory layer agents use.
+
+## Current Release
+
+**v0.1.0** — first working release.
+
+| Capability | Status |
+|------------|--------|
+| Vault init | working |
+| Source capture (file, URL) | working |
+| Processing pipeline | working |
+| Knowledge graph (wikilinks, MOCs) | working |
+| SQLite + FTS5 indexing | working |
+| BM25 search with scores | working |
+| Graph health metrics | working |
+| REST API (FastAPI) | working |
+| MCP server (stdio) | working |
+| 83 tests passing | verified |
+
+**Next:** v0.2 adds Git-backed memory history and drift checks.
+
+## Integration Surface
+
+ContextLedger provides four ways to access memory:
+
+| Interface | For | Protocol |
+|-----------|-----|----------|
+| **CLI** | Humans, scripts | `memory` command |
+| **REST API** | Apps, gateways | HTTP at `127.0.0.1:9314` |
+| **MCP server** | AI agents | stdio JSON-RPC |
+| **Markdown vault** | Obsidian, manual editing | Files on disk |
+
+Any agent that speaks MCP or HTTP can use ContextLedger as its memory layer.
 
 ## Features
 
@@ -92,38 +126,19 @@ vault/
 └── _index.md         # Vault root
 ```
 
-## Requirements
+## Roadmap
 
-- Python 3.11+
-- SQLite with FTS5 support (included in Python's sqlite3 module)
+| Version | Focus | Status |
+|---------|-------|--------|
+| **v0.1.0** | Core loop: capture, process, index, search, serve | released |
+| **v0.2** | Git-backed memory history and drift checks | planned |
+| **v0.3** | Retrieval explainability and provenance | planned |
 
-## Install
-
-```bash
-./install.sh
-```
-
-Or manually:
-
-```bash
-pip install -e .
-```
-
-Optional semantic search:
-
-```bash
-pip install -e ".[qdrant]"
-```
-
-## Documentation
-
-- [Quickstart](docs/quickstart.md) — step-by-step guide
-- [Architecture](docs/architecture.md) — system design and data model
-- [API Reference](docs/api.md) — REST endpoint documentation
+Every release includes tests, demo updates, and docs updates.
 
 ## Comparison
 
-| Feature | AI Memory OS | Obsidian | Vector DB | Agent Framework |
+| Feature | ContextLedger | Obsidian | Vector DB | Agent Framework |
 |---------|:---:|:---:|:---:|:---:|
 | Human-editable memory | yes | yes | no | varies |
 | Knowledge graph | yes | yes | no | varies |
@@ -131,6 +146,26 @@ pip install -e ".[qdrant]"
 | Shared by multiple agents | agent-ready (MCP/API) | no | partial | partial |
 | Optional semantic search | yes | no | yes | varies |
 | Local-first | yes | yes | varies | varies |
+
+## Testing
+
+```bash
+pytest -q
+```
+
+83 tests covering CLI, API, MCP, search, graph, processor, and integration.
+
+## Documentation
+
+- [Quickstart](docs/quickstart.md) — step-by-step guide
+- [Architecture](docs/architecture.md) — system design and data model
+- [API Reference](docs/api.md) — REST endpoint documentation
+- [Contributing](CONTRIBUTING.md) — development setup and guidelines
+
+## Requirements
+
+- Python 3.11+
+- SQLite with FTS5 support (included in Python's sqlite3 module)
 
 ## License
 
