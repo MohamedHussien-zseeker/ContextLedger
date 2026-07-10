@@ -101,6 +101,14 @@ exec "$HOME/.local/share/contextledger/venv/bin/memory" "$@"
 LAUNCHER_EOF
 chmod +x "$LAUNCHER"
 
+# Install cl-context bridge script
+CL_CONTEXT="$HOME/.local/bin/cl-context"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/bin/cl-context" ]; then
+  cp "$SCRIPT_DIR/bin/cl-context" "$CL_CONTEXT"
+  chmod +x "$CL_CONTEXT"
+fi
+
 # Add to PATH for current session
 export PATH="$HOME/.local/bin:$PATH"
 
