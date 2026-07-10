@@ -4,6 +4,8 @@
 
 GPL-3.0 licensed. Python 3.11+. 83 tests passing. CLI, REST API, and MCP server included.
 
+[![Tests](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/tests.yml/badge.svg)](https://github.com/MohamedHussien-zseeker/ContextLedger/actions/workflows/tests.yml)
+
 Local-first, human-editable memory infrastructure for AI agents. Searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
 
 > ContextLedger is an implementation of the [AI Memory OS](docs/architecture.md) architecture.

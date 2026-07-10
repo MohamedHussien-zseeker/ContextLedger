@@ -3,8 +3,8 @@
 ## Install
 
 ```bash
-git clone <repo>
-cd ai-memory-os
+git clone https://github.com/MohamedHussien-zseeker/ContextLedger.git
+cd ContextLedger
 ./install.sh
 ```
 

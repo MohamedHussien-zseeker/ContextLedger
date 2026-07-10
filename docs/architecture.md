@@ -1,6 +1,6 @@
 # Architecture
 
-AI Memory OS is a local-first, human-editable memory system for AI agents. Data lives on disk as markdown files in an Obsidian-compatible vault, indexed into SQLite for fast search.
+ContextLedger is a local-first, human-editable memory system for AI agents. Data lives on disk as markdown files in an Obsidian-compatible vault, indexed into SQLite for fast search.
 
 ## Provider Pipeline
 
