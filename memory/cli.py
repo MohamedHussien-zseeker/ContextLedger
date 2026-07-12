@@ -27,6 +27,8 @@ def cmd_init(args):
 
 
 def cmd_capture(args):
+    from memory.crud import find_by_content_hash
+
     provider = get_provider(args.scheme)
     if not provider:
         available = ", ".join(list_providers())
@@ -36,6 +38,13 @@ def cmd_capture(args):
     raw_dir = vault_path / config.RAW_DIR
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw_source = provider.capture(args.target)
+
+    # Idempotent capture: check for duplicates by content hash
+    existing = find_by_content_hash(vault_path, raw_source.content_hash)
+    if existing:
+        print(f"Duplicate skipped: {existing['title']} (hash: {raw_source.content_hash[:12]}...)")
+        return
+
     source_slug = raw_source.title.lower().replace(" ", "-")
     source_path = raw_dir / f"{source_slug}.md"
     fm = {
@@ -44,6 +53,8 @@ def cmd_capture(args):
         "source_uri": raw_source.source_uri,
         "title": raw_source.title,
         "status": "captured",
+        "content_hash": raw_source.content_hash,
+        "confidentiality": raw_source.confidentiality,
     }
     with open(source_path, "w", encoding="utf-8") as f:
         f.write("---\n")

@@ -21,6 +21,7 @@ class MemoryCreate(BaseModel):
     importance: int = Field(default=1, ge=1, le=5)
     tags: list[str] = []
     vault_path: Optional[str] = None
+    content_hash: Optional[str] = None
 
 
 class MemoryUpdate(BaseModel):

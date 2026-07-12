@@ -10,3 +10,5 @@ data/
 *.db-wal
 .venv/
 .superpowers/
+
+.venv/

@@ -81,3 +81,6 @@ def init_db(vault_path: Path):
     conn.executescript(SCHEMA_SQL)
     conn.executescript(TRIGGERS_SQL)
     conn.commit()
+    # Run pending migrations
+    from memory.migrations.runner import run_migrations
+    run_migrations(conn)

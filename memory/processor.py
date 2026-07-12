@@ -6,6 +6,8 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 from memory import config
 from memory.providers.base import RawSource
 
@@ -54,7 +56,9 @@ STOPWORDS = {
     "than",
     "were",
 }
-HUBS = {
+
+# Default hardcoded hubs (fallback when config.yaml is not present)
+DEFAULT_HUBS = {
     "AI Engineering": [
         "agent",
         "agents",
@@ -100,6 +104,24 @@ HUBS = {
     ],
     "Cybersecurity": ["security", "cyber", "cybersecurity", "breach", "threat", "auth", "token"],
 }
+
+
+def load_hubs(vault_path: Path) -> dict:
+    """Load hub categories from vault config.yaml, falling back to defaults."""
+    config_file = vault_path / "config.yaml"
+    if config_file.exists():
+        try:
+            with open(config_file) as f:
+                cfg = yaml.safe_load(f)
+            if cfg and "hubs" in cfg:
+                # Convert config format to HUBS format
+                hubs = {}
+                for hub_name, hub_config in cfg["hubs"].items():
+                    hubs[hub_name] = hub_config.get("keywords", [])
+                return hubs
+        except Exception:
+            pass
+    return DEFAULT_HUBS
 
 
 def now() -> str:
@@ -178,15 +200,17 @@ def keywords(text: str, limit: int = 12) -> list[str]:
     return [word for word, _count in counts.most_common(limit)]
 
 
-def choose_hubs(text: str) -> list[str]:
+def choose_hubs(vault_path: Path, text: str) -> list[str]:
+    """Classify content into hub categories."""
+    hubs = load_hubs(vault_path)
     low = text.lower()
     scored = []
-    for hub, terms in HUBS.items():
+    for hub, terms in hubs.items():
         score = sum(low.count(term) for term in terms)
         if score:
             scored.append((score, hub))
     scored.sort(reverse=True)
-    return [hub for _score, hub in scored[:3]] or ["AI Engineering", "Memory Systems"]
+    return [hub for _score, hub in scored[:3]] or list(hubs.keys())[:2]
 
 
 def all_notes(vault_path: Path) -> list[tuple[str, str, str]]:
@@ -289,7 +313,7 @@ def process_source(
     source_slug = slugify(source_path.stem)
     generated_rel = f"{config.GENERATED_DIR}/{source_slug}.md"
     generated_path = vault_path / generated_rel
-    hubs = choose_hubs(title + "\n" + body)
+    hubs = choose_hubs(vault_path, title + "\n" + body)
     hub_rels = [ensure_hub(vault_path, hub, dry_run) for hub in hubs]
     rels = related_notes(vault_path, title + "\n" + body)
     project = project_link(vault_path, title + "\n" + body)

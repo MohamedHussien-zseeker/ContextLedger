@@ -30,8 +30,10 @@ def test_title_from_body():
 
 
 def test_choose_hubs():
-    hubs = choose_hubs("rag vector search embedding qdrant")
-    assert "RAG" in hubs
+    with tempfile.TemporaryDirectory() as tmpdir:
+        vault_path = Path(tmpdir)
+        hubs = choose_hubs(vault_path, "rag vector search embedding qdrant")
+        assert "RAG" in hubs
 
 
 def test_keywords():

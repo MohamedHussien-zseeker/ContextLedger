@@ -31,8 +31,8 @@ def create(vault_path: Path, m: MemoryCreate) -> MemoryResponse:
     mid = str(uuid.uuid4())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     db.execute(
-        """INSERT INTO memories (id, type, title, content, source, importance, tags, created_at, updated_at, vault_path)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO memories (id, type, title, content, source, importance, tags, created_at, updated_at, vault_path, content_hash)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             mid,
             m.type,
@@ -44,6 +44,7 @@ def create(vault_path: Path, m: MemoryCreate) -> MemoryResponse:
             now,
             now,
             m.vault_path,
+            m.content_hash if hasattr(m, 'content_hash') else "",
         ),
     )
     db.commit()
@@ -103,6 +104,18 @@ def find_by_vault_path(vault_path_root: Path, vault_path: str) -> Optional[Memor
     ).fetchone()
     if row:
         return _row_to_memory(row)
+    return None
+
+
+def find_by_content_hash(vault_path_root: Path, content_hash: str) -> Optional[dict]:
+    """Find existing memory by content hash for idempotent capture."""
+    db = get_db(vault_path_root)
+    row = db.execute(
+        "SELECT id, title, vault_path, status FROM memories WHERE content_hash=? AND archived=0",
+        (content_hash,)
+    ).fetchone()
+    if row:
+        return {"id": row["id"], "title": row["title"], "vault_path": row["vault_path"], "status": row["status"]}
     return None
 
 
