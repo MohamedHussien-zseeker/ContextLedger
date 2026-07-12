@@ -36,7 +36,7 @@ def handle_request(request: dict) -> dict:
             "jsonrpc": "2.0",
             "id": request_id,
             "result": {
-                "tools": [
+                "tools": [tool for tool in [
                     {
                         "name": "search_memories",
                         "description": "Search memories by keyword",
@@ -112,7 +112,9 @@ def handle_request(request: dict) -> dict:
                         "description": "Diagnose vault issues",
                         "inputSchema": {"type": "object", "properties": {}},
                     },
-                ]
+                ] if not READ_ONLY or tool["name"] not in {
+                    "capture_content", "process_sources", "index_vault"
+                }]
             },
         }
     elif method == "tools/call":

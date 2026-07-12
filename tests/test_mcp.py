@@ -44,6 +44,22 @@ def test_tools_list():
     assert "doctor" in tool_names
 
 
+def test_read_only_tools_hide_and_block_mutations(monkeypatch):
+    from memory.mcp import server
+
+    monkeypatch.setattr(server, "READ_ONLY", True)
+    listed = server.handle_request({"method": "tools/list", "id": 20})
+    names = {tool["name"] for tool in listed["result"]["tools"]}
+    assert "search_memories" in names
+    assert "generate_brief" in names
+    assert not {"capture_content", "process_sources", "index_vault"} & names
+
+    called = server.handle_request(
+        {"method": "tools/call", "params": {"name": "capture_content", "arguments": {}}, "id": 21}
+    )
+    assert called["error"]["code"] == -32001
+
+
 def test_unknown_method():
     resp = handle_request({"method": "unknown", "id": 3})
     assert "error" in resp

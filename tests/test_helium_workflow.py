@@ -48,3 +48,17 @@ def test_brief_uses_only_approved_records(tmp_path):
     assert "Core Tool" in brief
     assert "Draft Tool" not in brief
     assert "source: core" in brief
+
+
+def test_supersede_links_old_record_to_approved_replacement(tmp_path):
+    vault = tmp_path / "vault"
+    init_db(vault)
+    _write(vault / "approved" / "old.md", "approved", "core-stack", "Old")
+    _write(vault / "drafts" / "new.md", "draft", "core-stack", "New")
+    index_vault(vault, apply=True)
+    transition(vault, "new", "approved")
+    transition(vault, "old", "superseded", "new")
+    old = (vault / "rejected" / "old.md").read_text()
+    assert "status: superseded" in old
+    assert "superseded_by: new" in old
+    assert (vault / "approved" / "new.md").exists()

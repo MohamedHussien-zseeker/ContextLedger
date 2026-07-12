@@ -138,7 +138,8 @@ def _transition(args, target):
 
     vault_path = args.vault or default_vault_path()
     destination = transition(vault_path, args.id, target, getattr(args, "replacement", None))
-    git_commit(vault_path, target, args.id)
+    prefix = {"approved": "approve", "rejected": "reject", "superseded": "supersede"}[target]
+    git_commit(vault_path, prefix, args.id)
     print(f"{target.title()}: {destination.relative_to(vault_path)}")
 
 
@@ -151,7 +152,13 @@ def cmd_reject(args):
 
 
 def cmd_supersede(args):
-    _transition(args, "superseded")
+    from memory.review import git_commit, transition
+
+    vault_path = args.vault or default_vault_path()
+    transition(vault_path, args.replacement, "approved")
+    destination = transition(vault_path, args.id, "superseded", args.replacement)
+    git_commit(vault_path, "supersede", f"{args.id}-by-{args.replacement}")
+    print(f"Superseded: {destination.relative_to(vault_path)} -> {args.replacement}")
 
 
 def cmd_brief(args):
