@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from memory.crud import find_by_content_hash, create
-from memory.database import init_db, _local
+from memory.crud import create, find_by_content_hash
+from memory.database import _local, init_db
 from memory.models import MemoryCreate
 from memory.providers.base import RawSource
 

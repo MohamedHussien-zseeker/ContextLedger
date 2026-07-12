@@ -99,6 +99,9 @@ def index_file(vault_path: Path, rel_path: str, apply: bool) -> dict:
     title = extract_title(content, fm, full_path.name)
     tags = extract_tags(fm)
     mtype = path_to_type(rel_path)
+    captured = (fm or {}).get("captured_at") or (fm or {}).get("captured")
+    if captured is not None and not isinstance(captured, str):
+        captured = captured.isoformat() if hasattr(captured, "isoformat") else str(captured)
     m = MemoryCreate(
         type=mtype,
         title=title,
@@ -107,6 +110,12 @@ def index_file(vault_path: Path, rel_path: str, apply: bool) -> dict:
         importance=2 if mtype == "log" else 3,
         tags=tags,
         vault_path=rel_path,
+        status=str((fm or {}).get("status", "approved")),
+        content_hash=(fm or {}).get("content_hash"),
+        source_type=str((fm or {}).get("source_type", "manual")),
+        source_uri=(fm or {}).get("source_uri"),
+        captured_at=captured,
+        confidentiality=str((fm or {}).get("confidentiality", "confidential")),
     )
     if apply:
         result = upsert_by_vault_path(vault_path, rel_path, m)

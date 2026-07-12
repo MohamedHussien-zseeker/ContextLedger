@@ -23,6 +23,12 @@ def _row_to_memory(row) -> MemoryResponse:
         access_count=row["access_count"],
         archived=bool(row["archived"]),
         vault_path=row["vault_path"],
+        status=row["status"] if "status" in row.keys() else "approved",
+        content_hash=row["content_hash"] if "content_hash" in row.keys() else None,
+        source_type=row["source_type"] if "source_type" in row.keys() else "manual",
+        source_uri=row["source_uri"] if "source_uri" in row.keys() else None,
+        captured_at=row["captured_at"] if "captured_at" in row.keys() else None,
+        confidentiality=row["confidentiality"] if "confidentiality" in row.keys() else "confidential",
     )
 
 
@@ -31,8 +37,10 @@ def create(vault_path: Path, m: MemoryCreate) -> MemoryResponse:
     mid = str(uuid.uuid4())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     db.execute(
-        """INSERT INTO memories (id, type, title, content, source, importance, tags, created_at, updated_at, vault_path, content_hash)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO memories
+           (id, type, title, content, source, importance, tags, created_at, updated_at,
+            vault_path, content_hash, status, source_type, source_uri, captured_at, confidentiality)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             mid,
             m.type,
@@ -44,7 +52,12 @@ def create(vault_path: Path, m: MemoryCreate) -> MemoryResponse:
             now,
             now,
             m.vault_path,
-            m.content_hash if hasattr(m, 'content_hash') else "",
+            m.content_hash,
+            m.status,
+            m.source_type,
+            m.source_uri,
+            m.captured_at,
+            m.confidentiality,
         ),
     )
     db.commit()
@@ -131,7 +144,16 @@ def upsert_by_vault_path(vault_path_root: Path, vault_path: str, m: MemoryCreate
             tags=m.tags,
             vault_path=vault_path,
         )
-        return update(vault_path_root, existing.id, um)
+        update(vault_path_root, existing.id, um)
+        db = get_db(vault_path_root)
+        db.execute(
+            """UPDATE memories SET status=?, content_hash=?, source_type=?, source_uri=?,
+               captured_at=?, confidentiality=? WHERE id=?""",
+            (m.status, m.content_hash, m.source_type, m.source_uri,
+             m.captured_at, m.confidentiality, existing.id),
+        )
+        db.commit()
+        return _row_to_memory(db.execute("SELECT * FROM memories WHERE id=?", (existing.id,)).fetchone())
     c = m.model_copy(update={"vault_path": vault_path})
     return create(vault_path_root, c)
 

@@ -12,11 +12,16 @@ def search(
     source: str = "",
     limit: int = 10,
     offset: int = 0,
+    status: str = "approved",
 ) -> tuple[list, int]:
     db = get_db(vault_path)
     use_fts = bool(q)
     conditions = ["m.archived=0"]
     params = []
+
+    if status:
+        conditions.append("m.status=?")
+        params.append(status)
 
     if use_fts:
         conditions.append("m.rowid IN (SELECT rowid FROM memories_fts WHERE memories_fts MATCH ?)")

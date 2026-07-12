@@ -65,14 +65,20 @@ END;
 
 
 def get_db(vault_path: Path) -> sqlite3.Connection:
+    db_path = (vault_path / "data" / "memory.db").resolve()
+    current_path = getattr(_local, "db_path", None)
+    if getattr(_local, "conn", None) is not None and current_path != db_path:
+        _local.conn.close()
+        _local.conn = None
     if not hasattr(_local, "conn") or _local.conn is None:
         db_dir = vault_path / "data"
         db_dir.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(db_dir / "memory.db"))
+        conn = sqlite3.connect(str(db_path))
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         _local.conn = conn
+        _local.db_path = db_path
     return _local.conn
 
 

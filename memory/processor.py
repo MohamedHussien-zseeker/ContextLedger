@@ -200,10 +200,12 @@ def keywords(text: str, limit: int = 12) -> list[str]:
     return [word for word, _count in counts.most_common(limit)]
 
 
-def choose_hubs(vault_path: Path, text: str) -> list[str]:
-    """Classify content into hub categories."""
-    hubs = load_hubs(vault_path)
-    low = text.lower()
+def choose_hubs(vault_or_text: Path | str, text: str | None = None) -> list[str]:
+    """Classify content, preserving the original one-argument API."""
+    vault_path = Path(vault_or_text) if text is not None else None
+    content = text if text is not None else str(vault_or_text)
+    hubs = load_hubs(vault_path) if vault_path else DEFAULT_HUBS
+    low = content.lower()
     scored = []
     for hub, terms in hubs.items():
         score = sum(low.count(term) for term in terms)

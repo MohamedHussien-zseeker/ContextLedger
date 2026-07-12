@@ -28,6 +28,8 @@ def cmd_init(args):
 
 def cmd_capture(args):
     from memory.crud import find_by_content_hash
+    from memory.database import init_db
+    from memory.indexer import index_file
 
     provider = get_provider(args.scheme)
     if not provider:
@@ -35,6 +37,7 @@ def cmd_capture(args):
         print(f"ERROR: no provider for '{args.scheme}'. Available: {available}")
         sys.exit(1)
     vault_path = args.vault or default_vault_path()
+    init_db(vault_path)
     raw_dir = vault_path / config.RAW_DIR
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw_source = provider.capture(args.target)
@@ -62,6 +65,7 @@ def cmd_capture(args):
             f.write(f"{k}: {v}\n")
         f.write("---\n\n")
         f.write(raw_source.content)
+    index_file(vault_path, str(source_path.relative_to(vault_path)), apply=True)
     print(f"Captured to {source_path.relative_to(vault_path)}")
     if args.process:
         result = process_source(vault_path, source_path, dry_run=args.dry_run)
@@ -104,6 +108,58 @@ def cmd_search(args):
     print(f"Found {total} results:")
     for mem in results:
         print(f"  [{mem.type}] {mem.title} (score: {getattr(mem, 'score', 'N/A')})")
+
+
+def cmd_pending(args):
+    from memory.review import list_pending
+
+    vault_path = args.vault or default_vault_path()
+    pending = list_pending(vault_path)
+    if not pending:
+        print("No drafts pending.")
+        return
+    for item in pending:
+        print(f"  {item['id']}: {item['title']}")
+
+
+def cmd_review(args):
+    from memory.review import list_pending, read_draft
+
+    vault_path = args.vault or default_vault_path()
+    if args.id:
+        print(read_draft(vault_path, args.id))
+        return
+    for item in list_pending(vault_path):
+        print(f"\n[{item['id']}] {item['title']}\n{item['preview']}")
+
+
+def _transition(args, target):
+    from memory.review import git_commit, transition
+
+    vault_path = args.vault or default_vault_path()
+    destination = transition(vault_path, args.id, target, getattr(args, "replacement", None))
+    git_commit(vault_path, target, args.id)
+    print(f"{target.title()}: {destination.relative_to(vault_path)}")
+
+
+def cmd_approve(args):
+    _transition(args, "approved")
+
+
+def cmd_reject(args):
+    _transition(args, "rejected")
+
+
+def cmd_supersede(args):
+    _transition(args, "superseded")
+
+
+def cmd_brief(args):
+    from memory.brief import save_brief
+
+    vault_path = args.vault or default_vault_path()
+    path = save_brief(vault_path, args.project, args.type)
+    print(f"Brief written to {path.relative_to(vault_path)}")
 
 
 def cmd_health(args):
@@ -190,6 +246,20 @@ def main():
     p_search.add_argument("query", help="Search query")
     p_search.add_argument("--limit", type=int, default=10)
 
+    sub.add_parser("pending", help="List drafts pending review")
+    p_review = sub.add_parser("review", help="Review pending drafts")
+    p_review.add_argument("id", nargs="?")
+    p_approve = sub.add_parser("approve", help="Approve a draft")
+    p_approve.add_argument("id")
+    p_reject = sub.add_parser("reject", help="Reject a draft")
+    p_reject.add_argument("id")
+    p_supersede = sub.add_parser("supersede", help="Supersede an approved record")
+    p_supersede.add_argument("id")
+    p_supersede.add_argument("replacement")
+    p_brief = sub.add_parser("brief", help="Generate a project brief")
+    p_brief.add_argument("project")
+    p_brief.add_argument("--type", default="landing-page")
+
     _p_health = sub.add_parser("health", help="Graph health report")
 
     _p_doctor = sub.add_parser("doctor", help="Diagnose vault issues")
@@ -212,6 +282,12 @@ def main():
         "process": cmd_process,
         "index": cmd_index,
         "search": cmd_search,
+        "pending": cmd_pending,
+        "review": cmd_review,
+        "approve": cmd_approve,
+        "reject": cmd_reject,
+        "supersede": cmd_supersede,
+        "brief": cmd_brief,
         "health": cmd_health,
         "doctor": cmd_doctor,
         "serve": cmd_serve,

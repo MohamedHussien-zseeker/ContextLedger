@@ -1,7 +1,9 @@
 """MCP server exposing memory tools to agents."""
 
 import json
+import os
 import sys
+from pathlib import Path
 
 from memory.crud import create, get_stats
 from memory.database import init_db
@@ -10,7 +12,8 @@ from memory.models import MemoryCreate
 from memory.search import search
 from memory.vault import default_vault_path
 
-VAULT_PATH = default_vault_path()
+VAULT_PATH = Path(os.environ.get("MEMORY_VAULT", str(default_vault_path())))
+READ_ONLY = os.environ.get("MEMORY_READ_ONLY", "0") == "1"
 
 
 def handle_request(request: dict) -> dict:
@@ -78,6 +81,23 @@ def handle_request(request: dict) -> dict:
                         },
                     },
                     {
+                        "name": "review_drafts",
+                        "description": "List drafts pending human review",
+                        "inputSchema": {"type": "object", "properties": {}},
+                    },
+                    {
+                        "name": "generate_brief",
+                        "description": "Generate a project brief from approved knowledge",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "project_name": {"type": "string"},
+                                "project_type": {"type": "string", "default": "landing-page"},
+                            },
+                            "required": ["project_name"],
+                        },
+                    },
+                    {
                         "name": "get_stats",
                         "description": "Memory statistics",
                         "inputSchema": {"type": "object", "properties": {}},
@@ -98,6 +118,12 @@ def handle_request(request: dict) -> dict:
     elif method == "tools/call":
         tool = params.get("name", "")
         args = params.get("arguments", {})
+        if READ_ONLY and tool in {"capture_content", "process_sources", "index_vault"}:
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {"code": -32001, "message": "Helium MCP is read-only"},
+            }
         if tool == "search_memories":
             results, total = search(
                 VAULT_PATH,
@@ -126,6 +152,16 @@ def handle_request(request: dict) -> dict:
                     ]
                 },
             }
+        elif tool == "review_drafts":
+            from memory.review import list_pending
+
+            text = json.dumps(list_pending(VAULT_PATH))
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"content": [{"type": "text", "text": text}]}}
+        elif tool == "generate_brief":
+            from memory.brief import assemble_brief
+
+            text = assemble_brief(VAULT_PATH, args["project_name"], args.get("project_type", "landing-page"))
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"content": [{"type": "text", "text": text}]}}
         elif tool == "capture_content":
             mem = create(
                 VAULT_PATH,

@@ -1,6 +1,7 @@
 from memory.providers.base import CaptureProvider
 from memory.providers.base import RawSource as RawSource
 from memory.providers.file import FileProvider
+from memory.providers.url import URLProvider
 
 _registry: dict[str, CaptureProvider] = {}
 
@@ -20,3 +21,4 @@ def list_providers() -> list[str]:
 
 # Register built-in providers
 register(FileProvider())
+register(URLProvider())

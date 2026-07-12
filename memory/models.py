@@ -19,9 +19,14 @@ class MemoryCreate(BaseModel):
     content: str = ""
     source: str = "manual"
     importance: int = Field(default=1, ge=1, le=5)
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
     vault_path: Optional[str] = None
     content_hash: Optional[str] = None
+    status: str = "approved"
+    source_type: str = "manual"
+    source_uri: Optional[str] = None
+    captured_at: Optional[str] = None
+    confidentiality: str = "confidential"
 
 
 class MemoryUpdate(BaseModel):
@@ -32,6 +37,12 @@ class MemoryUpdate(BaseModel):
     importance: Optional[int] = Field(None, ge=1, le=5)
     tags: Optional[list[str]] = None
     vault_path: Optional[str] = None
+    status: str = "approved"
+    content_hash: Optional[str] = None
+    source_type: str = "manual"
+    source_uri: Optional[str] = None
+    captured_at: Optional[str] = None
+    confidentiality: str = "confidential"
 
 
 class MemoryResponse(BaseModel):

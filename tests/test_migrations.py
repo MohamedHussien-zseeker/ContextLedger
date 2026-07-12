@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from memory.database import init_db, get_db, _local
+from memory.database import _local, get_db, init_db
 from memory.migrations.runner import get_applied, get_pending, run_migrations
 
 
