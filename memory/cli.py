@@ -2,16 +2,21 @@
 """ContextLedger CLI."""
 
 import argparse
+import getpass
+import json
 import sys
 from pathlib import Path
 
 from memory import config
+from memory.database import get_db
 from memory.doctor import check as doctor_check
 from memory.graph import health as graph_health
+from memory.history import HistoryService, MemoryNotFoundError, VersionConflictError
 from memory.indexer import index_vault
 from memory.processor import process_all, process_source
 from memory.providers import get as get_provider
 from memory.providers import list_providers
+from memory.review import git_commit_with_history
 from memory.search import search
 from memory.vault import default_vault_path, init_vault
 
@@ -200,6 +205,178 @@ def cmd_doctor(args):
         print("\nNo issues found.")
 
 
+def cmd_history(args):
+    vault_path = args.vault or default_vault_path()
+    db = get_db(vault_path)
+    service = HistoryService(db)
+
+    if args.history_cmd == "list":
+        return _cmd_history_list(args, service)
+    elif args.history_cmd == "diff":
+        return _cmd_history_diff(args, service)
+    elif args.history_cmd == "rollback":
+        return _cmd_history_rollback(args, service, vault_path)
+    else:
+        print("error: history command required (list, diff, rollback)", file=sys.stderr)
+        return 1
+
+
+def _cmd_history_list(args, service):
+    entries = service.get_log(
+        memory_id=args.memory_id,
+        limit=args.limit,
+        offset=args.offset,
+    )
+
+    if args.json:
+        output = {
+            "entries": [
+                {
+                    "id": e.id,
+                    "memory_id": e.memory_id,
+                    "version": e.version,
+                    "change_id": e.change_id,
+                    "actor_type": e.actor_type,
+                    "initiated_by": e.initiated_by,
+                    "executed_by": e.executed_by,
+                    "change_type": e.change_type,
+                    "reason": e.reason,
+                    "snapshot": e.snapshot,
+                    "rolled_back_from_history_id": e.rolled_back_from_history_id,
+                    "created_at": e.created_at,
+                }
+                for e in entries
+            ],
+            "total": len(entries),
+            "limit": args.limit,
+            "offset": args.offset,
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print(f"{'Version':<8} {'Author':<20} {'Type':<15} {'Reason':<25} {'Date':<20}")
+        print("-" * 90)
+        for e in entries:
+            author = e.executed_by or "unknown"
+            reason = (e.reason or "")[:24]
+            date = e.created_at[:19]
+            print(f"{e.version:<8} {author:<20} {e.change_type:<15} {reason:<25} {date:<20}")
+
+    return 0
+
+
+def _cmd_history_diff(args, service):
+    try:
+        diffs = service.diff_versions(args.memory_id, args.version_a, args.version_b)
+    except MemoryNotFoundError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        output = [
+            {"field": d.field, "old_value": d.old_value, "new_value": d.new_value}
+            for d in diffs
+        ]
+        print(json.dumps(output, indent=2))
+    else:
+        if not diffs:
+            print("No differences found.")
+            return 0
+
+        print(f"{'Field':<15} {'Old':<30} {'New':<30}")
+        print("-" * 75)
+        for d in diffs:
+            old = str(d.old_value)[:29]
+            new = str(d.new_value)[:29]
+            print(f"{d.field:<15} {old:<30} {new:<30}")
+
+    return 0
+
+
+def _cmd_history_rollback(args, service, vault_path):
+    if args.expected_version is None:
+        entries = service.get_log(memory_id=args.memory_id, limit=1)
+        if entries:
+            args.expected_version = entries[0].version
+        else:
+            print("error: no history found for memory", file=sys.stderr)
+            return 1
+
+    if not args.yes:
+        diffs = service.diff_versions(args.memory_id, args.expected_version, args.target_version)
+
+        print("Proposed rollback:")
+        print(f"  Memory: {args.memory_id}")
+        print(f"  From version: {args.expected_version}")
+        print(f"  To version: {args.target_version}")
+
+        if diffs:
+            print("\nChanges:")
+            for d in diffs:
+                print(f"  {d.field}: {d.old_value} -> {d.new_value}")
+
+        response = input("\nProceed? [y/N] ").strip().lower()
+        if response != "y":
+            print("Aborted.")
+            return 0
+
+    executed_by = args.executed_by or getpass.getuser()
+    initiated_by = getpass.getuser() if args.actor_type == "human" else None
+
+    try:
+        result = service.rollback(
+            memory_id=args.memory_id,
+            target_version=args.target_version,
+            expected_version=args.expected_version,
+            actor_type=args.actor_type,
+            executed_by=executed_by,
+            initiated_by=initiated_by,
+            reason=args.reason,
+        )
+    except (MemoryNotFoundError, VersionConflictError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2 if isinstance(e, VersionConflictError) else 1
+
+    git_sha = None
+    git_warning = None
+
+    if result.changed and result.entry.snapshot.get("vault_path"):
+        vault_file = Path(vault_path) / result.entry.snapshot["vault_path"]
+        if vault_file.exists():
+            git_sha = git_commit_with_history(
+                vault_path=Path(vault_path),
+                affected_paths=[vault_file],
+                change_id=result.entry.change_id,
+                memory_id=args.memory_id,
+                change_type="rollback",
+                memory_title=result.entry.snapshot["title"],
+            )
+            if git_sha is None:
+                git_warning = "git commit failed, database change preserved"
+
+    if args.json:
+        output = {
+            "changed": result.changed,
+            "entry": {
+                "id": result.entry.id,
+                "memory_id": result.entry.memory_id,
+                "version": result.entry.version,
+                "change_id": result.entry.change_id,
+                "change_type": result.entry.change_type,
+            },
+            "git_commit_sha": git_sha,
+            "git_warning": git_warning,
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print(f"Rollback complete: version {result.entry.version}")
+        if git_sha:
+            print(f"Git commit: {git_sha}")
+        if git_warning:
+            print(f"warning: {git_warning}", file=sys.stderr)
+
+    return 0
+
+
 def cmd_serve(args):
     try:
         import uvicorn
@@ -277,6 +454,31 @@ def main():
 
     _p_mcp = sub.add_parser("mcp", help="Start MCP server")
 
+    # history subcommands
+    p_history = sub.add_parser("history", help="Memory history operations")
+    history_sub = p_history.add_subparsers(dest="history_cmd")
+
+    history_list = history_sub.add_parser("list", help="List history for a memory")
+    history_list.add_argument("memory_id", help="Memory ID")
+    history_list.add_argument("--limit", type=int, default=50)
+    history_list.add_argument("--offset", type=int, default=0)
+    history_list.add_argument("--json", action="store_true")
+
+    history_diff = history_sub.add_parser("diff", help="Compare two versions")
+    history_diff.add_argument("memory_id", help="Memory ID")
+    history_diff.add_argument("version_a", type=int, help="First version")
+    history_diff.add_argument("version_b", type=int, help="Second version")
+    history_diff.add_argument("--json", action="store_true")
+
+    history_rollback = history_sub.add_parser("rollback", help="Rollback to a version")
+    history_rollback.add_argument("memory_id", help="Memory ID")
+    history_rollback.add_argument("target_version", type=int, help="Version to restore")
+    history_rollback.add_argument("--expected-version", type=int, help="Expected current version")
+    history_rollback.add_argument("--actor-type", default="human", choices=["human", "agent", "system"])
+    history_rollback.add_argument("--executed-by", help="Executor identity")
+    history_rollback.add_argument("--reason", help="Reason for rollback")
+    history_rollback.add_argument("--yes", action="store_true", help="Skip confirmation")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -299,6 +501,7 @@ def main():
         "doctor": cmd_doctor,
         "serve": cmd_serve,
         "mcp": cmd_mcp,
+        "history": cmd_history,
     }
     cmd = cmd_map.get(args.command)
     if cmd:
