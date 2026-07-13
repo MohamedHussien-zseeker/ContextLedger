@@ -316,27 +316,45 @@ cl-context history rollback <memory_id> <target_version> \
 
 ```python
 # Tool names (verb-first)
+
 "list_memory_history": {
-    "memory_id": {"type": "string"},
-    "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
-    "offset": {"type": "integer", "minimum": 0, "default": 0}
+    "type": "object",
+    "properties": {
+        "memory_id": {"type": "string"},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
+        "offset": {"type": "integer", "minimum": 0, "default": 0}
+    },
+    "required": ["memory_id"],
+    "additionalProperties": false
 }
 
 "diff_memory_history": {
-    "memory_id": {"type": "string"},
-    "version_a": {"type": "integer", "minimum": 1},
-    "version_b": {"type": "integer", "minimum": 1}
+    "type": "object",
+    "properties": {
+        "memory_id": {"type": "string"},
+        "version_a": {"type": "integer", "minimum": 1},
+        "version_b": {"type": "integer", "minimum": 1}
+    },
+    "required": ["memory_id", "version_a", "version_b"],
+    "additionalProperties": false
 }
 
 "rollback_memory": {  # omitted from tools/list when MEMORY_READ_ONLY=1
-    "memory_id": {"type": "string"},
-    "target_version": {"type": "integer", "minimum": 1},
-    "expected_version": {"type": "integer", "minimum": 1},
-    "actor_type": {"type": "string", "enum": ["human", "agent", "system"]},
-    "executed_by": {"type": "string", "minLength": 1},
-    "initiated_by": {"type": "string"},
-    "reason": {"type": "string"},  # required when actor_type=agent
-    "change_id": {"type": ["string", "null"]}
+    "type": "object",
+    "properties": {
+        "memory_id": {"type": "string"},
+        "target_version": {"type": "integer", "minimum": 1},
+        "expected_version": {"type": "integer", "minimum": 1},
+        "actor_type": {"type": "string", "enum": ["human", "agent", "system"]},
+        "executed_by": {"type": "string", "minLength": 1},
+        "initiated_by": {"type": "string"},
+        "reason": {"type": "string"},
+        "change_id": {"type": ["string", "null"]}
+    },
+    "required": ["memory_id", "target_version", "expected_version", "actor_type", "executed_by"],
+    "if": {"properties": {"actor_type": {"const": "agent"}}},
+    "then": {"required": ["reason"]},
+    "additionalProperties": false
 }
 ```
 
@@ -397,7 +415,9 @@ POST /v1/memories/abc123/history/rollback
 }
 → {
     "changed": true,
-    "entry": {"version": 6, "change_id": "...", ...}
+    "entry": {"version": 6, "change_id": "...", ...},
+    "git_commit_sha": "abc123def456",
+    "git_warning": null
   }
 ```
 
@@ -429,10 +449,17 @@ def git_commit_with_history(
 2. os.replace(tmp_path, final_path)  # atomic
 3. For moves: stage both old_path and new_path
 4. For deletes: stage removal
-5. git add affected_paths (explicit, not --all)
-6. git diff --cached -- affected_paths
-7. If diff: commit, else skip
+5. git add -- <affected_paths>  # explicit paths only
+6. git diff --cached -- <affected_paths>  # check for changes
+7. If diff: git commit --only -- <affected_paths>  # isolate to affected files
+8. Else: skip commit
 ```
+
+**Git isolation guarantee:**
+- Use `git commit --only -- <paths>` to commit only specified files
+- Preserves any pre-existing staged changes in the index
+- Never uses `git add --all` or `git add .`
+- Affected paths are explicitly passed from the HistoryService
 
 **Commit message format:**
 ```
@@ -445,8 +472,28 @@ Memory-Change-Id: abc123-def456
 **Failure handling:**
 - DB is authoritative; Git failure is warning
 - CLI: `warning: git commit failed, database change preserved` to stderr
-- REST/MCP: `{"git_warning": "...", "git_commit_sha": null}`
 - Reconciliation command can compare snapshots with vault files and repair drift (deferred to future work)
+
+**Integration-layer response shape:**
+```python
+@dataclass(frozen=True)
+class IntegrationResult:
+    """Extends MutationResult with Git outcome for CLI/MCP/REST."""
+    entry: HistoryEntry
+    changed: bool
+    git_commit_sha: str | None
+    git_warning: str | None
+```
+
+CLI, MCP, and REST wrappers add Git outcome fields to HistoryService's MutationResult. Example:
+```json
+{
+  "changed": true,
+  "entry": {"version": 6, "change_id": "...", ...},
+  "git_commit_sha": "abc123",
+  "git_warning": null
+}
+```
 
 ## 8. Migration Plan
 
@@ -514,10 +561,12 @@ FROM memories;
 
 **Migration runner fix:**
 ```python
-def run_migrations(db_path: str):
-    db = sqlite3.connect(db_path)
-    db.execute("PRAGMA foreign_keys = ON")
+def run_migrations(db: sqlite3.Connection):
+    """Run pending migrations using the provided connection.
     
+    The caller owns the connection (typically from init_db()).
+    Each migration runs in a single transactional script with the marker.
+    """
     for migration_file in sorted(glob("v*.sql")):
         version = extract_version(migration_file)
         if already_applied(db, version):
