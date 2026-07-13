@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -84,3 +85,74 @@ def git_commit(vault_path: Path, prefix: str, item_id: str) -> None:
     result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=vault_path)
     if result.returncode:
         subprocess.run(["git", "commit", "-m", f"{prefix}: {item_id}"], cwd=vault_path, check=True)
+
+
+def git_commit_with_history(
+    vault_path: Path,
+    affected_paths: list[Path],
+    change_id: str,
+    memory_id: str,
+    change_type: str,
+    memory_title: str,
+) -> str | None:
+    """Commit only affected vault paths; return commit SHA or None.
+
+    Uses git commit --only for isolation. Preserves pre-existing staged changes.
+    """
+    try:
+        # Check if git is available
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=vault_path,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None  # Not a git repo
+
+        # Stage only affected paths
+        for path in affected_paths:
+            subprocess.run(
+                ["git", "add", "--", str(path)],
+                cwd=vault_path,
+                check=True,
+            )
+
+        # Check for changes in affected paths
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet", "--"] + [str(p) for p in affected_paths],
+            cwd=vault_path,
+        )
+
+        if result.returncode == 0:
+            return None  # No changes to commit
+
+        # Build commit message
+        message = f"{change_type}: {memory_title}\n\nMemory-Id: {memory_id}\nMemory-Change-Id: {change_id}"
+
+        # Commit with --only for isolation
+        result = subprocess.run(
+            ["git", "commit", "--only", "-m", message, "--"] + [str(p) for p in affected_paths],
+            cwd=vault_path,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            # Git failure is warning, not error
+            print(f"warning: git commit failed: {result.stderr}", file=sys.stderr)
+            return None
+
+        # Get commit SHA
+        sha_result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=vault_path,
+            capture_output=True,
+            text=True,
+        )
+
+        return sha_result.stdout.strip() if sha_result.returncode == 0 else None
+
+    except Exception as e:
+        print(f"warning: git operation failed: {e}", file=sys.stderr)
+        return None
