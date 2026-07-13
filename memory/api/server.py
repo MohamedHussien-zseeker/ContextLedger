@@ -10,16 +10,28 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+import sqlite3
+
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from memory import config
 from memory.crud import archive, create, get, get_stats, update
-from memory.database import init_db
+from memory.database import get_db, init_db
 from memory.entity import extract_entities
 from memory.indexer import index_vault
-from memory.models import MemoryCreate, MemoryResponse, MemoryUpdate, StatsResponse
+from memory.history import HistoryService, MemoryNotFoundError, VersionConflictError
+from memory.models import (
+    HistoryEntryResponse,
+    HistoryListResponse,
+    MemoryCreate,
+    MemoryResponse,
+    MemoryUpdate,
+    MutationResponse,
+    RollbackRequest,
+    StatsResponse,
+)
 from memory.processor import process_all, process_source
 from memory.providers import get as get_provider
 from memory.providers import list_providers
@@ -83,6 +95,14 @@ def verify_token(authorization: str = Header(None)) -> str:
     if scheme.lower() != "bearer" or token != expected:
         raise HTTPException(401, "Invalid token")
     return token
+
+
+def _get_db() -> sqlite3.Connection:
+    return get_db(VAULT_PATH)
+
+
+def get_read_only() -> bool:
+    return os.environ.get("MEMORY_READ_ONLY", "0") == "1"
 
 
 @asynccontextmanager
@@ -276,3 +296,114 @@ def process(body: ProcessRequest, _=Depends(verify_token)):
 def index(body: IndexRequest, _=Depends(verify_token)):
     stats = index_vault(VAULT_PATH, apply=body.apply)
     return stats
+
+
+@app.get("/v1/memories/{memory_id}/history", response_model=HistoryListResponse)
+def list_history(
+    memory_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: sqlite3.Connection = Depends(_get_db),
+):
+    service = HistoryService(db)
+    entries = service.get_log(memory_id=memory_id, limit=limit, offset=offset)
+
+    return HistoryListResponse(
+        entries=[
+            HistoryEntryResponse(
+                id=e.id,
+                memory_id=e.memory_id,
+                version=e.version,
+                change_id=e.change_id,
+                actor_type=e.actor_type,
+                initiated_by=e.initiated_by,
+                executed_by=e.executed_by,
+                change_type=e.change_type,
+                reason=e.reason,
+                snapshot=e.snapshot,
+                rolled_back_from_history_id=e.rolled_back_from_history_id,
+                created_at=e.created_at,
+            )
+            for e in entries
+        ],
+        total=len(entries),
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get("/v1/memories/{memory_id}/history/diff")
+def diff_history(
+    memory_id: str,
+    a: int = Query(..., ge=1),
+    b: int = Query(..., ge=1),
+    db: sqlite3.Connection = Depends(_get_db),
+):
+    service = HistoryService(db)
+
+    try:
+        diffs = service.diff_versions(memory_id, a, b)
+    except MemoryNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return [
+        {"field": d.field, "old_value": d.old_value, "new_value": d.new_value}
+        for d in diffs
+    ]
+
+
+@app.post("/v1/memories/{memory_id}/history/rollback", response_model=MutationResponse)
+def rollback_history(
+    memory_id: str,
+    request: RollbackRequest,
+    idempotency_key: str | None = Header(None),
+    db: sqlite3.Connection = Depends(_get_db),
+    read_only: bool = Depends(get_read_only),
+):
+    if read_only:
+        raise HTTPException(status_code=403, detail="Rollback blocked in read-only mode")
+
+    service = HistoryService(db)
+
+    try:
+        result = service.rollback(
+            memory_id=memory_id,
+            target_version=request.target_version,
+            expected_version=request.expected_version,
+            actor_type=request.actor_type,
+            executed_by=request.executed_by,
+            initiated_by=request.initiated_by,
+            change_id=idempotency_key or request.change_id,
+            reason=request.reason,
+        )
+    except MemoryNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except VersionConflictError as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "version_conflict",
+                "message": str(e),
+                "details": {"current_version": e.current},
+            },
+        )
+
+    return MutationResponse(
+        changed=result.changed,
+        entry=HistoryEntryResponse(
+            id=result.entry.id,
+            memory_id=result.entry.memory_id,
+            version=result.entry.version,
+            change_id=result.entry.change_id,
+            actor_type=result.entry.actor_type,
+            initiated_by=result.entry.initiated_by,
+            executed_by=result.entry.executed_by,
+            change_type=result.entry.change_type,
+            reason=result.entry.reason,
+            snapshot=result.entry.snapshot,
+            rolled_back_from_history_id=result.entry.rolled_back_from_history_id,
+            created_at=result.entry.created_at,
+        ),
+        git_commit_sha=None,
+        git_warning=None,
+    )
