@@ -26,7 +26,12 @@ def get_pending(conn: sqlite3.Connection) -> list[str]:
 
 
 def run_migrations(conn: sqlite3.Connection) -> list[str]:
-    """Run all pending migrations. Returns list of applied versions."""
+    """Run all pending migrations. Returns list of applied versions.
+
+    Each migration runs as a single transactional script with BEGIN IMMEDIATE
+    to ensure atomicity — the migration DDL/DML and the schema_migrations
+    insert either both succeed or both roll back.
+    """
     applied = get_applied(conn)
     migration_files = sorted(MIGRATIONS_DIR.glob("v*.sql"))
     applied_now = []
@@ -35,12 +40,19 @@ def run_migrations(conn: sqlite3.Connection) -> list[str]:
         version = mf.stem
         if version not in applied:
             sql = mf.read_text()
-            conn.executescript(sql)
-            conn.execute(
-                "INSERT INTO schema_migrations (version) VALUES (?)",
-                (version,)
-            )
-            conn.commit()
+            version_sql = version.replace("'", "''")
+            script = f"""
+BEGIN IMMEDIATE;
+{sql}
+INSERT INTO schema_migrations (version)
+VALUES ('{version_sql}');
+COMMIT;
+"""
+            try:
+                conn.executescript(script)
+            except Exception:
+                conn.rollback()
+                raise
             applied_now.append(version)
 
     return applied_now

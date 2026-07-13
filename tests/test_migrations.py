@@ -1,4 +1,5 @@
 """Tests for versioned database migrations."""
+import json
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -123,3 +124,133 @@ def test_default_confidentiality_value(temp_vault):
 
     row = conn.execute("SELECT confidentiality FROM memories WHERE id = 'test-2'").fetchone()
     assert row[0] == "confidential"
+
+
+# ── v3 history migration tests ──────────────────────────────────────
+
+
+def test_v3_fresh_database(temp_vault):
+    """Create new DB, run all migrations, verify v3 schema."""
+    init_db(temp_vault)
+    conn = get_db(temp_vault)
+
+    # Verify deleted_at column exists
+    cols = [row[1] for row in conn.execute("PRAGMA table_info(memories)").fetchall()]
+    assert "deleted_at" in cols
+
+    # Verify memory_history table exists
+    tables = [
+        row[0]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+    ]
+    assert "memory_history" in tables
+
+
+def _setup_pre_v3_db(conn):
+    """Create base schema and apply v1+v2 only, leaving v3 pending."""
+    from memory.database import SCHEMA_SQL, TRIGGERS_SQL
+    conn.executescript(SCHEMA_SQL)
+    conn.executescript(TRIGGERS_SQL)
+    conn.commit()
+    # Apply v1 and v2 SQL directly (not via run_migrations which would also apply v3)
+    migrations_dir = Path(__file__).resolve().parent.parent / "memory" / "migrations"
+    for name in ("v1_add_helium_fields.sql", "v2_provenance_and_unique_hash.sql"):
+        conn.executescript((migrations_dir / name).read_text())
+    # Create migration tracking table and mark v1+v2 as applied
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version TEXT PRIMARY KEY,
+            applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now'))
+        )
+    """)
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_migrations (version) VALUES ('v1_add_helium_fields'), ('v2_provenance_and_unique_hash')"
+    )
+    conn.commit()
+
+
+def test_v3_upgrade_with_active_and_archived(temp_vault):
+    """Insert active + archived memories, run v3, verify backfill."""
+    conn = get_db(temp_vault)
+    _setup_pre_v3_db(conn)
+
+    # Insert test memories
+    conn.execute("""
+        INSERT INTO memories (id, type, title, content, status, importance, archived, updated_at)
+        VALUES ('active-1', 'note', 'Active Note', 'Content', 'draft', 1, 0, '2026-07-13T00:00:00Z')
+    """)
+    conn.execute("""
+        INSERT INTO memories (id, type, title, content, status, importance, archived, updated_at)
+        VALUES ('archived-1', 'note', 'Archived Note', 'Content', 'draft', 1, 1, '2026-07-12T00:00:00Z')
+    """)
+    conn.commit()
+
+    # Run v3 migration (v1/v2 already applied)
+    applied = run_migrations(conn)
+    assert "v3_history_table" in applied
+
+    # Verify backfill
+    history = conn.execute(
+        "SELECT * FROM memory_history ORDER BY memory_id"
+    ).fetchall()
+    assert len(history) == 2
+
+    # Active memory should have change_type='create'
+    active_history = [h for h in history if h[1] == "active-1"][0]
+    assert active_history[7] == "create"  # change_type column (index 7)
+
+    # Archived memory should have change_type='delete'
+    archived_history = [h for h in history if h[1] == "archived-1"][0]
+    assert archived_history[7] == "delete"
+
+    # Verify deleted_at set for archived
+    archived_row = conn.execute(
+        "SELECT deleted_at FROM memories WHERE id='archived-1'"
+    ).fetchone()
+    assert archived_row[0] is not None
+
+
+def test_v3_json_tags_are_arrays(temp_vault):
+    """Verify tags column produces JSON array, not escaped string."""
+    conn = get_db(temp_vault)
+    _setup_pre_v3_db(conn)
+
+    # Insert memory with tags
+    conn.execute("""
+        INSERT INTO memories (id, type, title, content, status, importance, tags)
+        VALUES ('tags-1', 'note', 'Tagged', 'Content', 'draft', 1, '["tag1", "tag2"]')
+    """)
+    conn.commit()
+
+    run_migrations(conn)
+
+    # Verify snapshot tags is JSON array
+    snapshot = conn.execute(
+        "SELECT snapshot FROM memory_history WHERE memory_id='tags-1'"
+    ).fetchone()
+    data = json.loads(snapshot[0])
+    assert isinstance(data["tags"], list)
+    assert data["tags"] == ["tag1", "tag2"]
+
+
+def test_v3_idempotent(temp_vault):
+    """Run migration twice, no errors, no duplicate history."""
+    conn = get_db(temp_vault)
+    _setup_pre_v3_db(conn)
+
+    conn.execute("""
+        INSERT INTO memories (id, type, title, content, status, importance)
+        VALUES ('idem-1', 'note', 'Test', 'Content', 'draft', 1)
+    """)
+    conn.commit()
+
+    # Run twice
+    run_migrations(conn)
+    count1 = conn.execute("SELECT COUNT(*) FROM memory_history").fetchone()[0]
+
+    run_migrations(conn)
+    count2 = conn.execute("SELECT COUNT(*) FROM memory_history").fetchone()[0]
+
+    assert count1 == count2 == 1
