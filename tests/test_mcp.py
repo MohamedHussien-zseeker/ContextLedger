@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from memory.database import _local
-from memory.mcp.server import handle_request
+from memory.mcp.server import handle_history_tools, handle_request
 
 
 @pytest.fixture(autouse=True)
@@ -164,3 +164,206 @@ def test_doctor(monkeypatch):
         result = json.loads(resp["result"]["content"][0]["text"])
         assert "healthy" in result
         assert "checks" in result
+
+
+def _make_snapshot(title="Test", status="draft", tags=None, importance=1, deleted=False, content=None):
+    """Create a valid snapshot for testing."""
+    return {
+        "schema_version": 1,
+        "title": title,
+        "content": content if content is not None else f"# {title}\n\nContent here.",
+        "status": status,
+        "tags": tags or [],
+        "importance": importance,
+        "vault_path": "vault/test",
+        "deleted": deleted,
+    }
+
+
+def test_list_memory_history(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        monkeypatch.setattr(server, "VAULT_PATH", Path(tmp))
+        server.handle_request({"method": "initialize", "id": 1})
+
+        from memory.history import HistoryService
+
+        service = HistoryService(server.get_db(Path(tmp)))
+        service.create_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(),
+            actor_type="system",
+            executed_by="test",
+        )
+
+        result = server.handle_history_tools(
+            "list_memory_history",
+            {"memory_id": "mem-1"},
+            Path(tmp),
+            read_only=False,
+        )
+        assert "content" in result
+        entries = json.loads(result["content"][0]["text"])
+        assert len(entries) == 1
+        assert entries[0]["memory_id"] == "mem-1"
+        assert entries[0]["version"] == 1
+
+
+def test_diff_memory_history(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        monkeypatch.setattr(server, "VAULT_PATH", Path(tmp))
+        server.handle_request({"method": "initialize", "id": 1})
+
+        from memory.history import HistoryService
+
+        service = HistoryService(server.get_db(Path(tmp)))
+        service.create_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(title="V1"),
+            actor_type="system",
+            executed_by="test",
+        )
+        service.update_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(title="V2"),
+            expected_version=1,
+            actor_type="system",
+            executed_by="test",
+        )
+
+        result = server.handle_history_tools(
+            "diff_memory_history",
+            {"memory_id": "mem-1", "version_a": 1, "version_b": 2},
+            Path(tmp),
+            read_only=False,
+        )
+        assert "content" in result
+        diffs = json.loads(result["content"][0]["text"])
+        assert any(d["field"] == "title" for d in diffs)
+
+
+def test_rollback_memory(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        monkeypatch.setattr(server, "VAULT_PATH", Path(tmp))
+        server.handle_request({"method": "initialize", "id": 1})
+
+        from memory.history import HistoryService
+
+        service = HistoryService(server.get_db(Path(tmp)))
+        service.create_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(title="Original"),
+            actor_type="system",
+            executed_by="test",
+        )
+        service.update_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(title="Changed"),
+            expected_version=1,
+            actor_type="system",
+            executed_by="test",
+        )
+
+        result = server.handle_history_tools(
+            "rollback_memory",
+            {
+                "memory_id": "mem-1",
+                "target_version": 1,
+                "expected_version": 2,
+                "actor_type": "system",
+                "executed_by": "test",
+                "reason": "Undo change",
+            },
+            Path(tmp),
+            read_only=False,
+        )
+        assert "content" in result
+        data = json.loads(result["content"][0]["text"])
+        assert data["entry"]["version"] == 3
+
+
+def test_rollback_blocked_in_read_only():
+    result = handle_history_tools(
+        "rollback_memory",
+        {"memory_id": "mem-1", "target_version": 1, "expected_version": 1, "actor_type": "human", "executed_by": "test"},
+        Path("/tmp/nonexistent"),
+        read_only=True,
+    )
+    assert "error" in result
+    assert result["error"]["code"] == "read_only"
+
+
+def test_history_tools_in_tools_list(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        resp = server.handle_request({"method": "tools/list", "id": 2})
+        tool_names = [t["name"] for t in resp["result"]["tools"]]
+        assert "list_memory_history" in tool_names
+        assert "diff_memory_history" in tool_names
+        assert "rollback_memory" in tool_names
+
+
+def test_history_tools_hidden_in_read_only(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        monkeypatch.setattr(server, "READ_ONLY", True)
+        resp = server.handle_request({"method": "tools/list", "id": 2})
+        tool_names = [t["name"] for t in resp["result"]["tools"]]
+        assert "list_memory_history" not in tool_names
+        assert "diff_memory_history" not in tool_names
+        assert "rollback_memory" not in tool_names
+
+
+def test_history_tools_via_mcp_call(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        monkeypatch.setattr("memory.mcp.server.VAULT_PATH", Path(tmp))
+        import importlib
+        from memory.mcp import server
+
+        importlib.reload(server)
+        monkeypatch.setattr(server, "VAULT_PATH", Path(tmp))
+        server.handle_request({"method": "initialize", "id": 1})
+
+        from memory.history import HistoryService
+
+        service = HistoryService(server.get_db(Path(tmp)))
+        service.create_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(),
+            actor_type="system",
+            executed_by="test",
+        )
+
+        resp = server.handle_request({
+            "method": "tools/call",
+            "params": {
+                "name": "list_memory_history",
+                "arguments": {"memory_id": "mem-1"},
+            },
+            "id": 10,
+        })
+        assert "error" not in resp
+        entries = json.loads(resp["result"]["content"][0]["text"])
+        assert len(entries) == 1
