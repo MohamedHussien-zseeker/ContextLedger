@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -60,6 +60,13 @@ class MemoryResponse(BaseModel):
     archived: bool
     vault_path: Optional[str] = None
     score: Optional[float] = None
+    deleted_at: Optional[str] = None
+    status: Optional[str] = None
+    content_hash: Optional[str] = None
+    source_type: Optional[str] = None
+    source_uri: Optional[str] = None
+    captured_at: Optional[str] = None
+    confidentiality: Optional[str] = None
 
 
 class SearchResult(BaseModel):
@@ -74,3 +81,48 @@ class StatsResponse(BaseModel):
     total_relationships: int
     db_size_bytes: int
     health: str
+
+
+class HistoryEntryResponse(BaseModel):
+    id: str
+    memory_id: str
+    version: int
+    change_id: str
+    actor_type: str
+    initiated_by: Optional[str] = None
+    executed_by: str
+    change_type: str
+    reason: Optional[str] = None
+    snapshot: dict
+    rolled_back_from_history_id: Optional[str] = None
+    created_at: str
+
+
+class FieldDiffResponse(BaseModel):
+    field: str
+    old_value: Any
+    new_value: Any
+
+
+class HistoryListResponse(BaseModel):
+    entries: list[HistoryEntryResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class RollbackRequest(BaseModel):
+    target_version: int
+    expected_version: int
+    actor_type: str
+    executed_by: str
+    initiated_by: Optional[str] = None
+    reason: Optional[str] = None
+    change_id: Optional[str] = None
+
+
+class MutationResponse(BaseModel):
+    changed: bool
+    entry: HistoryEntryResponse
+    git_commit_sha: Optional[str] = None
+    git_warning: Optional[str] = None

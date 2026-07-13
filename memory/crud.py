@@ -23,6 +23,7 @@ def _row_to_memory(row) -> MemoryResponse:
         access_count=row["access_count"],
         archived=bool(row["archived"]),
         vault_path=row["vault_path"],
+        deleted_at=row["deleted_at"] if "deleted_at" in row.keys() else None,
         status=row["status"] if "status" in row.keys() else "approved",
         content_hash=row["content_hash"] if "content_hash" in row.keys() else None,
         source_type=row["source_type"] if "source_type" in row.keys() else "manual",
@@ -102,9 +103,10 @@ def update(vault_path: Path, mid: str, m: MemoryUpdate) -> Optional[MemoryRespon
 
 def archive(vault_path: Path, mid: str) -> bool:
     db = get_db(vault_path)
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     cur = db.execute(
-        "UPDATE memories SET archived=1, updated_at=? WHERE id=? AND archived=0",
-        (datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), mid),
+        "UPDATE memories SET archived=1, deleted_at=?, updated_at=? WHERE id=? AND archived=0",
+        (now, now, mid),
     )
     db.commit()
     return cur.rowcount > 0
