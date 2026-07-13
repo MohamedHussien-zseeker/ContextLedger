@@ -447,3 +447,79 @@ class TestConcurrency:
         # Exactly one succeeds, one gets conflict
         assert len(results) == 1
         assert len(errors) == 1
+
+
+def test_e2e_full_workflow(service):
+    """Full workflow: create → update → status transition → soft deletion → diff → rollback."""
+    # Create
+    result = service.create_memory(
+        memory_id="e2e-1",
+        snapshot=_make_snapshot(title="E2E Test", status="draft"),
+        actor_type="human",
+        executed_by="zserverai",
+        initiated_by="zserverai",
+        reason="Initial creation",
+    )
+    assert result.changed is True
+    assert result.entry.version == 1
+    
+    # Update
+    result = service.update_memory(
+        memory_id="e2e-1",
+        snapshot=_make_snapshot(title="E2E Test Updated", status="draft"),
+        expected_version=1,
+        actor_type="human",
+        executed_by="zserverai",
+        initiated_by="zserverai",
+        reason="Added content",
+    )
+    assert result.entry.version == 2
+    
+    # Status transition
+    result = service.change_status(
+        memory_id="e2e-1",
+        new_status="approved",
+        expected_version=2,
+        actor_type="human",
+        executed_by="helium-review",
+        initiated_by="zserverai",
+        reason="Approved for production",
+    )
+    assert result.entry.version == 3
+    assert result.entry.snapshot["status"] == "approved"
+    
+    # Delete
+    result = service.delete_memory(
+        memory_id="e2e-1",
+        expected_version=3,
+        actor_type="human",
+        executed_by="zserverai",
+        initiated_by="zserverai",
+        reason="No longer needed",
+    )
+    assert result.entry.version == 4
+    assert result.entry.snapshot["deleted"] is True
+    
+    # Diff between v1 and v2
+    diffs = service.diff_versions("e2e-1", 1, 2)
+    assert any(d.field == "title" for d in diffs)
+    
+    # Rollback to v1
+    result = service.rollback(
+        memory_id="e2e-1",
+        target_version=1,
+        expected_version=4,
+        actor_type="human",
+        executed_by="zserverai",
+        initiated_by="zserverai",
+        reason="Restore original",
+    )
+    assert result.entry.version == 5
+    assert result.entry.change_type == "rollback"
+    assert result.entry.snapshot["title"] == "E2E Test"
+    assert result.entry.snapshot["deleted"] is False
+    
+    # Verify full history
+    log = service.get_log(memory_id="e2e-1")
+    assert len(log) == 5
+    assert [e.change_type for e in log] == ["rollback", "delete", "status_change", "update", "create"]
