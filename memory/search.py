@@ -25,7 +25,8 @@ def search(
 
     if use_fts:
         conditions.append("m.rowid IN (SELECT rowid FROM memories_fts WHERE memories_fts MATCH ?)")
-        params.append(q)
+        # Quote the query to handle hyphens and special characters
+        params.append(f'"{q}"')
 
     if tags:
         for tag in tags:
