@@ -3,6 +3,7 @@
 import json
 import sqlite3
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -395,3 +396,54 @@ class TestDiff:
         fields = {d.field for d in diffs}
         assert "title" in fields
         assert "importance" in fields
+
+
+class TestConcurrency:
+    def test_concurrent_updates(self, service):
+        """Two concurrent updates: exactly one succeeds."""
+        service.create_memory(
+            memory_id="mem-1",
+            snapshot=_make_snapshot(),
+            actor_type="human",
+            executed_by="zserverai",
+            initiated_by="zserverai",
+        )
+        
+        db_path = service.db.execute("PRAGMA database_list").fetchone()[2]
+        
+        results = []
+        errors = []
+        
+        def update_thread(thread_id):
+            conn = None
+            try:
+                conn = sqlite3.connect(db_path)
+                conn.row_factory = sqlite3.Row
+                svc = HistoryService(conn)
+                result = svc.update_memory(
+                    memory_id="mem-1",
+                    snapshot=_make_snapshot(title=f"Thread {thread_id}"),
+                    expected_version=1,
+                    actor_type="human",
+                    executed_by="zserverai",
+                    initiated_by="zserverai",
+                )
+                results.append(result)
+            except VersionConflictError as e:
+                errors.append(e)
+            finally:
+                if conn is not None:
+                    conn.close()
+        
+        t1 = threading.Thread(target=update_thread, args=(1,))
+        t2 = threading.Thread(target=update_thread, args=(2,))
+        
+        t1.start()
+        t2.start()
+        
+        t1.join()
+        t2.join()
+        
+        # Exactly one succeeds, one gets conflict
+        assert len(results) == 1
+        assert len(errors) == 1
