@@ -10,11 +10,13 @@ GPL-3.0 licensed. Python 3.11+. 93 tests passing. CLI, REST API, and MCP server 
 
 Local-first, human-editable memory infrastructure for AI agents. Searchable, inspectable, versionable project knowledge that survives across sessions and assistants.
 
+> **What “Git for AI memory” means:** ContextLedger aims to make agent memory inspectable and versionable. The current release stores memory as Markdown and indexes it with SQLite; Git-backed memory history and drift checks are planned for v0.2, not included in v0.1.2.
+
 > ContextLedger is an implementation of the [AI Memory OS](docs/architecture.md) architecture.
 
 ![ContextLedger Demo](docs/demo.gif)
 
-*What you just saw: init a vault, capture a source, process into linked knowledge, index into SQLite, search with BM25 scores, check graph health, diagnose issues — 7 commands, 30 seconds, zero cloud.*
+*What you just saw: initialize a vault, capture a source, process it into linked knowledge, index it in SQLite, search with BM25 scores, check graph health, and diagnose issues — 7 commands, about 30 seconds, zero cloud.*
 
 ## Quick Install
 
@@ -24,6 +26,8 @@ cd ContextLedger
 ./install.sh
 ```
 
+The installer creates an isolated virtual environment under `~/.local/share/contextledger/venv` and installs the `memory` and `cl-context` commands under `~/.local/bin`. If your shell cannot find `memory`, add `~/.local/bin` to your PATH as described in the [quickstart](docs/quickstart.md#-localbin-not-on-path).
+
 **Termux (Android):** Install build prerequisites first, then see [docs/quickstart.md](docs/quickstart.md#termux-android) for full instructions:
 
 ```bash
@@ -32,12 +36,22 @@ pkg install git python rust clang make pkg-config openssl libffi
 
 ## 30-Second Demo
 
+Run these commands from the directory where you cloned ContextLedger. This example creates its input file and uses the same vault for every command:
+
 ```bash
+mkdir -p ~/my-vault
+cat > my-notes.md <<'EOF'
+# Project notes
+
+We decided to use SQLite FTS5 for local full-text search.
+The memory store should remain human-editable Markdown.
+EOF
+
 memory init ~/my-vault
 memory --vault ~/my-vault capture file my-notes.md
 memory --vault ~/my-vault process
 memory --vault ~/my-vault index --apply
-memory --vault ~/my-vault search "your query"
+memory --vault ~/my-vault search "SQLite"
 memory --vault ~/my-vault health
 memory --vault ~/my-vault doctor
 ```
