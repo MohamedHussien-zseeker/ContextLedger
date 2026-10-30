@@ -1,33 +1,42 @@
 # Contributing to ContextLedger
 
-Thanks for your interest in improving ContextLedger.
+Thanks for your interest in improving ContextLedger. Bug reports, installation feedback, documentation fixes, and code contributions are all welcome.
 
-## Development Setup
+## Development setup
 
 ```bash
 git clone https://github.com/MohamedHussien-zseeker/ContextLedger.git
 cd ContextLedger
-pip install -e .
+pip install -e ".[dev]"
 ```
 
-## Running Tests
+## Run the test suite
 
 ```bash
 pytest -q
 ```
 
-All 83 tests should pass before submitting a PR.
+Run the full test suite before submitting a pull request. The expected test count can change as coverage grows; use the test runner's result rather than relying on a hard-coded count in this guide.
 
-## Building the Demo
+## Lint
+
+If you have installed the development dependencies:
 
 ```bash
-# Requires VHS and ttyd
+ruff check .
+```
+
+## Building the demo
+
+The terminal demo is built with VHS and ttyd:
+
+```bash
 docs/build-demo.sh
 ```
 
-Generates `docs/demo.gif` and `docs/demo.mp4` from `docs/demo.tape`.
+This generates `docs/demo.gif` and `docs/demo.mp4` from `docs/demo.tape`.
 
-## Project Structure
+## Project structure
 
 ```
 memory/
@@ -47,28 +56,38 @@ memory/
 └── providers/      # Source capture providers
 ```
 
-## How to Contribute
+## How to contribute
 
 **Bug reports:** Use the [bug report template](https://github.com/MohamedHussien-zseeker/ContextLedger/issues/new?template=bug_report.md). Include steps to reproduce, expected behavior, and actual behavior.
 
 **Feature requests:** Use the [feature request template](https://github.com/MohamedHussien-zseeker/ContextLedger/issues/new?template=feature_request.md). Explain the problem you're trying to solve.
 
-**Install/first-run feedback:** Use the [feedback template](https://github.com/MohamedHussien-zseeker/ContextLedger/issues/new?template=feedback.md). Tell us what confused you.
+**Install/first-run feedback:** Use the [feedback template](https://github.com/MohamedHussien-zseeker/ContextLedger/issues/new?template=feedback.md). Tell us what confused you, which operating system and Python version you use, and the command that failed.
 
 **Code contributions:**
 
-1. Fork the repo
-2. Create a feature branch (`git checkout -b my-feature`)
-3. Add tests for new functionality
-4. Run `pytest -q` — all tests must pass
-5. Submit a PR with a clear description of the change
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b my-feature`).
+3. Add or update tests for changed behavior.
+4. Run `pytest -q` and `ruff check .`.
+5. Submit a pull request with a clear description and relevant test output.
 
-## Release Checklist
+## Pull request checklist
+
+- [ ] The change addresses a clear problem or use case.
+- [ ] Tests cover changed behavior.
+- [ ] `pytest -q` passes.
+- [ ] `ruff check .` passes, where applicable.
+- [ ] Documentation is updated.
+- [ ] The demo is updated if CLI behavior changes.
+- [ ] Security-sensitive changes are called out in the PR description.
+
+## Release checklist
 
 Every release should include:
 
 - [ ] All tests passing
 - [ ] Demo updated if CLI changed
 - [ ] Docs updated for new features
-- [ ] CHANGELOG updated
-- [ ] Version bumped in `pyproject.toml`
+- [ ] Changelog updated
+- [ ] Version bumped consistently in release metadata
